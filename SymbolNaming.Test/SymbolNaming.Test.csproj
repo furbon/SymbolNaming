@@ -16,7 +16,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\SymbolNamingu\SymbolNaming.csproj" />
+	  <ProjectReference Include="..\SymbolNaming\SymbolNaming.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
