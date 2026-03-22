@@ -3,8 +3,14 @@ using SymbolNaming.Tokens;
 
 namespace SymbolNaming.Analysis;
 
+/// <summary>
+/// 既定の Case 分類器です。
+/// </summary>
 public sealed class DefaultCaseClassifier : ICaseClassifier
 {
+    /// <summary>
+    /// トークン列を分類し、分類不能時は <see cref="CaseClassificationResult.Unknown"/> を返します。
+    /// </summary>
     public CaseClassificationResult Classify(TokenList tokens, CaseAnalysisOptions? options = null)
     {
         return TryClassify(tokens, out var result, options)
@@ -12,6 +18,12 @@ public sealed class DefaultCaseClassifier : ICaseClassifier
             : CaseClassificationResult.Unknown;
     }
 
+    /// <summary>
+    /// 元文字列の Span を使用してトークン列を分類し、分類不能時は <see cref="CaseClassificationResult.Unknown"/> を返します。
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="tokens"/> に source がない場合でも、<paramref name="source"/> から判定できます。
+    /// </remarks>
     public CaseClassificationResult Classify(ReadOnlySpan<char> source, TokenList tokens, CaseAnalysisOptions? options = null)
     {
         return TryClassify(source, tokens, out var result, options)
@@ -19,6 +31,9 @@ public sealed class DefaultCaseClassifier : ICaseClassifier
             : CaseClassificationResult.Unknown;
     }
 
+    /// <summary>
+    /// トークン列の分類を試行します。
+    /// </summary>
     public bool TryClassify(TokenList tokens, out CaseClassificationResult result, CaseAnalysisOptions? options = null)
     {
         if (tokens is null)
@@ -131,6 +146,9 @@ public sealed class DefaultCaseClassifier : ICaseClassifier
         return true;
     }
 
+    /// <summary>
+    /// 元文字列の Span を使用してトークン列の分類を試行します。
+    /// </summary>
     public bool TryClassify(ReadOnlySpan<char> source, TokenList tokens, out CaseClassificationResult result, CaseAnalysisOptions? options = null)
     {
         if (tokens is null)

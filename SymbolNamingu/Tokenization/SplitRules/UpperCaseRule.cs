@@ -1,7 +1,13 @@
 namespace SymbolNaming.Tokenization.SplitRules;
 
+/// <summary>
+/// 大文字境界で分割するルールです。
+/// </summary>
 public sealed class UpperCaseRule : ISplitRule
 {
+    /// <summary>
+    /// 指定位置が大文字境界のとき語分割を返します。
+    /// </summary>
     public SplitResult Check(ReadOnlySpan<char> span, int index)
     {
         if ((uint)index >= (uint)span.Length || index == 0)

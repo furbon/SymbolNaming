@@ -3,8 +3,14 @@ using SymbolNaming.Tokens;
 
 namespace SymbolNaming.Engine;
 
+/// <summary>
+/// プレフィックス抽出結果のスライス情報を保持します。
+/// </summary>
 internal readonly struct SymbolInspectionSliceInfo
 {
+    /// <summary>
+    /// 新しいスライス情報を初期化します。
+    /// </summary>
     public SymbolInspectionSliceInfo(int prefixStart, int prefixLength, int symbolStart)
     {
         PrefixStart = prefixStart;
@@ -12,15 +18,30 @@ internal readonly struct SymbolInspectionSliceInfo
         SymbolStart = symbolStart;
     }
 
+    /// <summary>
+    /// プレフィックス開始位置です。
+    /// </summary>
     public int PrefixStart { get; }
 
+    /// <summary>
+    /// プレフィックス長です。
+    /// </summary>
     public int PrefixLength { get; }
 
+    /// <summary>
+    /// プレフィックス除去後シンボルの開始位置です。
+    /// </summary>
     public int SymbolStart { get; }
 }
 
+/// <summary>
+/// <see cref="SymbolInspectionSliceInfo"/> を計算するファクトリーです。
+/// </summary>
 internal static class SymbolInspectionSliceInfoFactory
 {
+    /// <summary>
+    /// 入力情報からスライス情報を生成します。
+    /// </summary>
     public static SymbolInspectionSliceInfo Create(ReadOnlySpan<char> source, TokenList tokens, CaseClassificationResult classification)
     {
         if (!classification.Prefixed)

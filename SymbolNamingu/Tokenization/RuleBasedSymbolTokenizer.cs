@@ -4,6 +4,9 @@ using SymbolNaming.Tokens;
 
 namespace SymbolNaming.Tokenization;
 
+/// <summary>
+/// 分割ルールに基づく既定のトークナイザーです。
+/// </summary>
 public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer
 {
     private const int ReservedTokenCapacity = 8;
@@ -13,6 +16,9 @@ public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer
     private readonly IProtectedWordProvider _protectedWordProvider;
     private readonly IPrefixProvider _prefixProvider;
 
+    /// <summary>
+    /// 空ルールで初期化します。
+    /// </summary>
     public RuleBasedSymbolTokenizer()
     {
         _rules = new List<ISplitRule>(InitialRuleCapacity);
@@ -20,6 +26,9 @@ public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer
         _prefixProvider = EmptyPrefixProvider.Instance;
     }
 
+    /// <summary>
+    /// 指定ルールで初期化します。
+    /// </summary>
     public RuleBasedSymbolTokenizer(IEnumerable<ISplitRule> rules)
     {
         _rules = CreateRuleList(rules);
@@ -27,6 +36,9 @@ public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer
         _prefixProvider = EmptyPrefixProvider.Instance;
     }
 
+    /// <summary>
+    /// ルールと辞書系プロバイダーを指定して初期化します。
+    /// </summary>
     public RuleBasedSymbolTokenizer(IEnumerable<ISplitRule> rules, IProtectedWordProvider protectedWordProvider, IPrefixProvider prefixProvider)
     {
         _rules = CreateRuleList(rules);
@@ -34,6 +46,9 @@ public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer
         _prefixProvider = prefixProvider ?? throw new ArgumentNullException(nameof(prefixProvider));
     }
 
+    /// <summary>
+    /// 分割ルールを追加します。
+    /// </summary>
     public void AddRule(ISplitRule rule)
     {
         if (rule is null)
@@ -44,6 +59,9 @@ public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer
         _rules.Add(rule);
     }
 
+    /// <summary>
+    /// 文字列をトークン化します。
+    /// </summary>
     public TokenList Tokenize(string input)
     {
         if (input is null)
@@ -54,6 +72,9 @@ public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer
         return TokenizeCore(input.AsSpan(), input);
     }
 
+    /// <summary>
+    /// 文字列 Span をトークン化します。
+    /// </summary>
     public TokenList Tokenize(ReadOnlySpan<char> input)
     {
         return TokenizeCore(input, null);

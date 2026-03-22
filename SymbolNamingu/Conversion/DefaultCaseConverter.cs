@@ -3,8 +3,17 @@ using System.Buffers;
 
 namespace SymbolNaming.Conversion;
 
+/// <summary>
+/// 既定の Case 変換器です。
+/// </summary>
 public sealed class DefaultCaseConverter : ICaseConverter
 {
+    /// <summary>
+    /// トークン列を指定スタイルへ変換します。
+    /// </summary>
+    /// <remarks>
+    /// プレフィックスは <see cref="CaseConversionOptions.PrefixPolicy"/> に従って処理されます。
+    /// </remarks>
     public string Convert(TokenList tokens, CaseStyle targetStyle, CaseConversionOptions? options = null)
     {
         if (tokens is null)
