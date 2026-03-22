@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="SymbolNamingu.Test/SymbolNaming.Test.csproj" />
+  <Project Path="SymbolNamingu/SymbolNaming.csproj" />
+</Solution>
