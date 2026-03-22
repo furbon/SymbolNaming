@@ -1,5 +1,6 @@
 using SymbolNaming.Analysis;
 using SymbolNaming.Conversion;
+using SymbolNaming.Lifecycle;
 using SymbolNaming.Tokenization;
 using SymbolNaming.Tokens;
 
@@ -8,11 +9,15 @@ namespace SymbolNaming.Engine;
 /// <summary>
 /// Tokenize / Analyze / Convert を統合して提供するエンジンです。
 /// </summary>
-public sealed class SymbolCaseEngine
+public sealed class SymbolCaseEngine : IFreezableComponent
 {
     private readonly ISymbolTokenizer _tokenizer;
     private readonly ICaseClassifier _classifier;
     private readonly ICaseConverter _converter;
+    private readonly object _freezeSync = new();
+
+    private DefaultCaseClassifier? _defaultClassifier;
+    private bool _isFrozen;
 
     /// <summary>
     /// 依存コンポーネントを指定して初期化します。
@@ -25,10 +30,53 @@ public sealed class SymbolCaseEngine
     }
 
     /// <summary>
+    /// 状態が凍結済みかどうかを取得します。
+    /// </summary>
+    public bool IsFrozen => _isFrozen;
+
+    /// <summary>
+    /// エンジンを凍結し、依存コンポーネントも可能な範囲で凍結します。
+    /// </summary>
+    public void Freeze()
+    {
+        if (_isFrozen)
+        {
+            return;
+        }
+
+        lock (_freezeSync)
+        {
+            if (_isFrozen)
+            {
+                return;
+            }
+
+            if (_tokenizer is IFreezableComponent freezableTokenizer)
+            {
+                freezableTokenizer.Freeze();
+            }
+
+            if (_classifier is IFreezableComponent freezableClassifier)
+            {
+                freezableClassifier.Freeze();
+            }
+
+            if (_converter is IFreezableComponent freezableConverter)
+            {
+                freezableConverter.Freeze();
+            }
+
+            _defaultClassifier = _classifier as DefaultCaseClassifier;
+            _isFrozen = true;
+        }
+    }
+
+    /// <summary>
     /// 文字列をトークン化します。
     /// </summary>
     public TokenList Tokenize(string input)
     {
+        EnsureFrozen();
         return _tokenizer.Tokenize(input);
     }
 
@@ -37,6 +85,7 @@ public sealed class SymbolCaseEngine
     /// </summary>
     public TokenList Tokenize(ReadOnlySpan<char> input)
     {
+        EnsureFrozen();
         return _tokenizer.Tokenize(input);
     }
 
@@ -45,6 +94,7 @@ public sealed class SymbolCaseEngine
     /// </summary>
     public CaseClassificationResult Analyze(string input, CaseAnalysisOptions? options = null)
     {
+        EnsureFrozen();
         var tokens = _tokenizer.Tokenize(input);
         return _classifier.Classify(tokens, options);
     }
@@ -54,6 +104,7 @@ public sealed class SymbolCaseEngine
     /// </summary>
     public bool TryAnalyze(string input, out CaseClassificationResult result, CaseAnalysisOptions? options = null)
     {
+        EnsureFrozen();
         var tokens = _tokenizer.Tokenize(input);
         return _classifier.TryClassify(tokens, out result, options);
     }
@@ -63,6 +114,8 @@ public sealed class SymbolCaseEngine
     /// </summary>
     public SymbolInspection Inspect(string input, CaseAnalysisOptions? options = null)
     {
+        EnsureFrozen();
+
         if (input is null)
         {
             throw new ArgumentNullException(nameof(input));
@@ -78,6 +131,7 @@ public sealed class SymbolCaseEngine
     /// </summary>
     public SymbolInspectionSpan Inspect(ReadOnlySpan<char> input, CaseAnalysisOptions? options = null)
     {
+        EnsureFrozen();
         var tokens = _tokenizer.Tokenize(input);
         var classification = ClassifySpanInput(input, tokens, options);
         return new SymbolInspectionSpan(input, tokens, classification);
@@ -88,6 +142,7 @@ public sealed class SymbolCaseEngine
     /// </summary>
     public string Convert(string input, CaseStyle targetStyle, CaseConversionOptions? options = null)
     {
+        EnsureFrozen();
         var tokens = _tokenizer.Tokenize(input);
         return _converter.Convert(tokens, targetStyle, options);
     }
@@ -97,18 +152,27 @@ public sealed class SymbolCaseEngine
     /// </summary>
     public string Convert(TokenList tokens, CaseStyle targetStyle, CaseConversionOptions? options = null)
     {
+        EnsureFrozen();
         return _converter.Convert(tokens, targetStyle, options);
     }
 
     private CaseClassificationResult ClassifySpanInput(ReadOnlySpan<char> input, TokenList tokens, CaseAnalysisOptions? options)
     {
-        if (_classifier is DefaultCaseClassifier defaultClassifier)
+        if (_defaultClassifier is not null)
         {
-            return defaultClassifier.Classify(input, tokens, options);
+            return _defaultClassifier.Classify(input, tokens, options);
         }
 
         var sourceText = input.ToString();
         var sourceTokens = _tokenizer.Tokenize(sourceText);
         return _classifier.Classify(sourceTokens, options);
+    }
+
+    private void EnsureFrozen()
+    {
+        if (!_isFrozen)
+        {
+            throw new InvalidOperationException("Engine is not frozen. Call Freeze() before using it.");
+        }
     }
 }

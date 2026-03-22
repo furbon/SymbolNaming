@@ -10,7 +10,7 @@ internal static class TestTokenizerFactory
         IProtectedWordProvider? protectedWordProvider = null,
         IPrefixProvider? prefixProvider = null)
     {
-        return new RuleBasedSymbolTokenizer(
+        var tokenizer = new RuleBasedSymbolTokenizer(
             new ISplitRule[]
             {
                 new VerbatimRule(),
@@ -20,5 +20,8 @@ internal static class TestTokenizerFactory
             },
             protectedWordProvider ?? EmptyProtectedWordProvider.Instance,
             prefixProvider ?? EmptyPrefixProvider.Instance);
+
+        tokenizer.Freeze();
+        return tokenizer;
     }
 }

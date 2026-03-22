@@ -8,6 +8,14 @@ namespace SymbolNaming.Test;
 public class SymbolCaseEngineTests
 {
     [Fact]
+    public void Freeze前にAnalyzeするとInvalidOperationExceptionを送出する()
+    {
+        var engine = CreateEngine(freeze: false);
+
+        Assert.Throws<InvalidOperationException>(() => engine.Analyze("UserName"));
+    }
+
+    [Fact]
     public void AnalyzeはTokenizerとClassifierを組み合わせてCase分類できる()
     {
         var engine = CreateEngine(prefixProvider: new TestPrefixProvider("s"));
@@ -93,11 +101,18 @@ public class SymbolCaseEngineTests
         Assert.Equal("UserName", inspection.SymbolNameWithoutPrefix.ToString());
     }
 
-    private static SymbolCaseEngine CreateEngine(TestProtectedWordProvider? protectedWordProvider = null, TestPrefixProvider? prefixProvider = null)
+    private static SymbolCaseEngine CreateEngine(TestProtectedWordProvider? protectedWordProvider = null, TestPrefixProvider? prefixProvider = null, bool freeze = true)
     {
-        return new SymbolCaseEngine(
+        var engine = new SymbolCaseEngine(
             TestTokenizerFactory.CreateDefault(protectedWordProvider, prefixProvider),
             new DefaultCaseClassifier(),
             new DefaultCaseConverter());
+
+        if (freeze)
+        {
+            engine.Freeze();
+        }
+
+        return engine;
     }
 }

@@ -43,6 +43,23 @@ public class RuleBasedSymbolTokenizerTests
     }
 
     [Fact]
+    public void Freeze前にTokenizeするとInvalidOperationExceptionを送出する()
+    {
+        var tokenizer = new RuleBasedSymbolTokenizer(new[] { new UpperCaseRule() });
+
+        Assert.Throws<InvalidOperationException>(() => tokenizer.Tokenize("UserName"));
+    }
+
+    [Fact]
+    public void Freeze後にAddRuleするとInvalidOperationExceptionを送出する()
+    {
+        var tokenizer = new RuleBasedSymbolTokenizer();
+        tokenizer.Freeze();
+
+        Assert.Throws<InvalidOperationException>(() => tokenizer.AddRule(new UpperCaseRule()));
+    }
+
+    [Fact]
     public void ReadOnlySpan入力でTokenizeするとHasSourceはfalseになる()
     {
         var tokenizer = CreateTokenizer(new UpperCaseRule());
@@ -318,11 +335,17 @@ public class RuleBasedSymbolTokenizerTests
             tokenizer.AddRule(splitRule);
         }
 
+        tokenizer.Freeze();
         return tokenizer;
     }
 
     private static void AssertTokenize(ISymbolTokenizer tokenizer, string input, string[] expected, TokenCategory[] categories)
     {
+        if (tokenizer is RuleBasedSymbolTokenizer ruleBasedTokenizer && !ruleBasedTokenizer.IsFrozen)
+        {
+            ruleBasedTokenizer.Freeze();
+        }
+
         var tokens = tokenizer.Tokenize(input);
 
         Assert.Equal(expected, tokens.Select(t => t.AsSpan(input).ToString()).ToArray());

@@ -1,5 +1,6 @@
 using SymbolNaming.Tokenization.SplitRules;
 using SymbolNaming.Dictionaries;
+using SymbolNaming.Lifecycle;
 using SymbolNaming.Tokens;
 
 namespace SymbolNaming.Tokenization;
@@ -7,7 +8,7 @@ namespace SymbolNaming.Tokenization;
 /// <summary>
 /// 分割ルールに基づく既定のトークナイザーです。
 /// </summary>
-public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer
+public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer, IFreezableComponent
 {
     private const int ReservedTokenCapacity = 8;
     private const int InitialRuleCapacity = 8;
@@ -15,6 +16,9 @@ public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer
     private readonly List<ISplitRule> _rules;
     private readonly IProtectedWordProvider _protectedWordProvider;
     private readonly IPrefixProvider _prefixProvider;
+    private readonly object _freezeSync = new();
+
+    private ISplitRule[]? _frozenRules;
 
     /// <summary>
     /// 空ルールで初期化します。
@@ -47,10 +51,41 @@ public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer
     }
 
     /// <summary>
+    /// 状態が凍結済みかどうかを取得します。
+    /// </summary>
+    public bool IsFrozen => _frozenRules is not null;
+
+    /// <summary>
+    /// ルール構成を凍結し、以後の変更を禁止します。
+    /// </summary>
+    public void Freeze()
+    {
+        if (IsFrozen)
+        {
+            return;
+        }
+
+        lock (_freezeSync)
+        {
+            if (_frozenRules is not null)
+            {
+                return;
+            }
+
+            _frozenRules = _rules.ToArray();
+
+            _rules.Clear();
+            _rules.TrimExcess();
+        }
+    }
+
+    /// <summary>
     /// 分割ルールを追加します。
     /// </summary>
     public void AddRule(ISplitRule rule)
     {
+        EnsureNotFrozen();
+
         if (rule is null)
         {
             throw new ArgumentNullException(nameof(rule));
@@ -69,6 +104,8 @@ public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer
             throw new ArgumentNullException(nameof(input));
         }
 
+        EnsureFrozen();
+
         return TokenizeCore(input.AsSpan(), input);
     }
 
@@ -77,11 +114,19 @@ public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer
     /// </summary>
     public TokenList Tokenize(ReadOnlySpan<char> input)
     {
+        EnsureFrozen();
+
         return TokenizeCore(input, null);
     }
 
     private TokenList TokenizeCore(ReadOnlySpan<char> input, string? sourceText)
     {
+        var rules = _frozenRules;
+        if (rules is null)
+        {
+            throw new InvalidOperationException("Tokenizer is not frozen. Call Freeze() before tokenization.");
+        }
+
         var tokens = new List<Token>(ReservedTokenCapacity);
 
         var currentPosition = 0;
@@ -101,8 +146,9 @@ public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer
         while (currentPosition < input.Length)
         {
             var sliceFound = false;
-            foreach (var rule in _rules)
+            for (var i = 0; i < rules.Length; ++i)
             {
+                var rule = rules[i];
                 var splitResult = rule.Check(input, currentPosition);
                 if (!splitResult.IsSplit)
                 {
@@ -221,6 +267,22 @@ public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer
             {
                 tokens[i] = new Token(token.Start, token.Length, category);
             }
+        }
+    }
+
+    private void EnsureFrozen()
+    {
+        if (!IsFrozen)
+        {
+            throw new InvalidOperationException("Tokenizer is not frozen. Call Freeze() before tokenization.");
+        }
+    }
+
+    private void EnsureNotFrozen()
+    {
+        if (IsFrozen)
+        {
+            throw new InvalidOperationException("Tokenizer is already frozen and cannot be modified.");
         }
     }
 }
