@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
@@ -17,11 +16,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\CaseRules\SymbolNaming.csproj" />
+		<ProjectReference Include="..\SymbolNamingu\SymbolNaming.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<Using Include="Xunit" />
 	</ItemGroup>
-
 </Project>
