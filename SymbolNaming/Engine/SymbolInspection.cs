@@ -12,10 +12,16 @@ public sealed class SymbolInspection
     /// 新しい検査結果を初期化します。
     /// </summary>
     public SymbolInspection(string source, TokenList tokens, CaseClassificationResult classification)
+        : this(source, tokens, classification, Array.Empty<SymbolInspectionWarning>())
+    {
+    }
+
+    internal SymbolInspection(string source, TokenList tokens, CaseClassificationResult classification, IReadOnlyList<SymbolInspectionWarning> warnings)
     {
         Source = source ?? throw new ArgumentNullException(nameof(source));
         Tokens = tokens ?? throw new ArgumentNullException(nameof(tokens));
         Classification = classification;
+        Warnings = warnings ?? throw new ArgumentNullException(nameof(warnings));
 
         var sliceInfo = SymbolInspectionSliceInfoFactory.Create(source.AsSpan(), tokens, classification);
         HasPrefix = sliceInfo.PrefixLength > 0;
@@ -62,4 +68,14 @@ public sealed class SymbolInspection
     /// プレフィックスを除去したシンボル名です。
     /// </summary>
     public string SymbolNameWithoutPrefix { get; }
+
+    /// <summary>
+    /// 検査時に検出された注意事項の一覧です。
+    /// </summary>
+    public IReadOnlyList<SymbolInspectionWarning> Warnings { get; }
+
+    /// <summary>
+    /// 注意事項が 1 件以上存在するかを示します。
+    /// </summary>
+    public bool HasWarnings => Warnings.Count > 0;
 }

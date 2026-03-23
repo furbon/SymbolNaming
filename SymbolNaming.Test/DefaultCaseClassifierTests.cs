@@ -514,5 +514,4 @@ public class DefaultCaseClassifierTests
         Assert.Equal(CaseStyle.UpperSnakeCase, result.Style);
         Assert.True(result.Prefixed);
     }
-
 }

@@ -123,7 +123,8 @@ public sealed class SymbolCaseEngine : IFreezableComponent
 
         var tokens = _tokenizer.Tokenize(input);
         var classification = _classifier.Classify(tokens, options);
-        return new SymbolInspection(input, tokens, classification);
+        var warnings = SymbolInspectionWarningAnalyzer.Analyze(input.AsSpan(), tokens, classification);
+        return new SymbolInspection(input, tokens, classification, warnings);
     }
 
     /// <summary>
@@ -134,7 +135,8 @@ public sealed class SymbolCaseEngine : IFreezableComponent
         EnsureFrozen();
         var tokens = _tokenizer.Tokenize(input);
         var classification = ClassifySpanInput(input, tokens, options);
-        return new SymbolInspectionSpan(input, tokens, classification);
+        var warnings = SymbolInspectionWarningAnalyzer.Analyze(input, tokens, classification);
+        return new SymbolInspectionSpan(input, tokens, classification, warnings);
     }
 
     /// <summary>

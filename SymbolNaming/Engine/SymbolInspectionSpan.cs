@@ -11,11 +11,12 @@ public readonly ref struct SymbolInspectionSpan
     private readonly ReadOnlySpan<char> _source;
     private readonly SymbolInspectionSliceInfo _sliceInfo;
 
-    internal SymbolInspectionSpan(ReadOnlySpan<char> source, TokenList tokens, CaseClassificationResult classification)
+    internal SymbolInspectionSpan(ReadOnlySpan<char> source, TokenList tokens, CaseClassificationResult classification, IReadOnlyList<SymbolInspectionWarning> warnings)
     {
         _source = source;
         Tokens = tokens ?? throw new ArgumentNullException(nameof(tokens));
         Classification = classification;
+        Warnings = warnings ?? throw new ArgumentNullException(nameof(warnings));
         _sliceInfo = SymbolInspectionSliceInfoFactory.Create(source, tokens, classification);
     }
 
@@ -61,4 +62,14 @@ public readonly ref struct SymbolInspectionSpan
     /// プレフィックスを除去したシンボル名 Span です。
     /// </summary>
     public ReadOnlySpan<char> SymbolNameWithoutPrefix => _source.Slice(_sliceInfo.SymbolStart);
+
+    /// <summary>
+    /// 検査時に検出された注意事項の一覧です。
+    /// </summary>
+    public IReadOnlyList<SymbolInspectionWarning> Warnings { get; }
+
+    /// <summary>
+    /// 注意事項が 1 件以上存在するかを示します。
+    /// </summary>
+    public bool HasWarnings => Warnings.Count > 0;
 }

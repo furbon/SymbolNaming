@@ -83,6 +83,41 @@ public class SymbolCaseEngineTests
     }
 
     [Fact]
+    public void InspectはPLayerパターンに警告を付与できる()
+    {
+        var engine = CreateEngine(prefixProvider: new TestPrefixProvider("s_"));
+
+        var inspection = engine.Inspect(
+            "s_PLayer",
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider("s_"),
+            });
+
+        Assert.Equal(CaseStyle.PascalCase, inspection.CaseStyle);
+        Assert.True(inspection.Prefixed);
+        Assert.True(inspection.HasWarnings);
+        Assert.Contains(inspection.Warnings, w => w.Kind == SymbolInspectionWarningKind.SuspiciousLeadingSingleUpperToken);
+    }
+
+    [Fact]
+    public void InspectはInterface命名パターンIAsyncResultには警告しない()
+    {
+        var engine = CreateEngine(prefixProvider: new TestPrefixProvider("I"));
+
+        var inspection = engine.Inspect(
+            "IAsyncResult",
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider("I"),
+            });
+
+        Assert.Equal(CaseStyle.PascalCase, inspection.CaseStyle);
+        Assert.True(inspection.Prefixed);
+        Assert.False(inspection.HasWarnings);
+    }
+
+    [Fact]
     public void InspectSpanはSpanベースでPrefixとPrefix除去後シンボル名を取得できる()
     {
         var engine = CreateEngine(prefixProvider: new TestPrefixProvider("s_"));
