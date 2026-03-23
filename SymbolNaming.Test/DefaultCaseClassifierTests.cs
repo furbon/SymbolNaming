@@ -27,6 +27,134 @@ public class DefaultCaseClassifierTests
     }
 
     [Fact]
+    public void UNKNOWNは単一トークンでもScreamingSnakeCaseを判定できる()
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault();
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize("UNKNOWN");
+
+        var success = classifier.TryClassify(tokens, out var result);
+
+        Assert.True(success);
+        Assert.Equal(CaseStyle.ScreamingSnakeCase, result.Style);
+        Assert.False(result.Prefixed);
+    }
+
+    [Fact]
+    public void セパレーターなし単一トークン_PlayerはPascalCaseとUpperSnakeCaseに適合する()
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault();
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize("Player");
+
+        var matches = classifier.GetMatches(tokens);
+
+        Assert.True(matches.PascalCase);
+        Assert.True(matches.UpperSnakeCase);
+        Assert.False(matches.CamelCase);
+        Assert.False(matches.LowerSnakeCase);
+        Assert.False(matches.ScreamingSnakeCase);
+    }
+
+    [Fact]
+    public void セパレーターなし単一トークン_enemyはCamelCaseとLowerSnakeCaseに適合する()
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault();
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize("enemy");
+
+        var matches = classifier.GetMatches(tokens);
+
+        Assert.False(matches.PascalCase);
+        Assert.True(matches.CamelCase);
+        Assert.False(matches.UpperSnakeCase);
+        Assert.True(matches.LowerSnakeCase);
+        Assert.False(matches.ScreamingSnakeCase);
+    }
+
+    [Theory]
+    [InlineData("Player", CaseStyle.UpperSnakeCase)]
+    [InlineData("enemy", CaseStyle.LowerSnakeCase)]
+    public void 単一トークン曖昧判定はPreferSnakeCaseでスネークケースを優先できる(string input, CaseStyle expected)
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault();
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize(input);
+
+        var success = classifier.TryClassify(
+            tokens,
+            out var result,
+            new CaseAnalysisOptions
+            {
+                AmbiguousSingleTokenPolicy = AmbiguousSingleTokenPolicy.PreferSnakeCase,
+            });
+
+        Assert.True(success);
+        Assert.Equal(expected, result.Style);
+    }
+
+    [Fact]
+    public void 単一トークン曖昧判定はReturnUnknownでUnknownを返せる()
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault();
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize("Player");
+
+        var success = classifier.TryClassify(
+            tokens,
+            out var result,
+            new CaseAnalysisOptions
+            {
+                AmbiguousSingleTokenPolicy = AmbiguousSingleTokenPolicy.ReturnUnknown,
+            });
+
+        Assert.False(success);
+        Assert.Equal(CaseStyle.Unknown, result.Style);
+    }
+
+    [Fact]
+    public void 単一トークン曖昧判定はCustomResolverで最終スタイルを制御できる()
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault();
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize("Player");
+
+        var success = classifier.TryClassify(
+            tokens,
+            out var result,
+            new CaseAnalysisOptions
+            {
+                AmbiguousSingleTokenPolicy = AmbiguousSingleTokenPolicy.UseCustomResolver,
+                AmbiguousSingleTokenResolver = matches => matches.UpperSnakeCase ? CaseStyle.UpperSnakeCase : (CaseStyle?)null,
+            });
+
+        Assert.True(success);
+        Assert.Equal(CaseStyle.UpperSnakeCase, result.Style);
+    }
+
+    [Theory]
+    [InlineData("s")]
+    [InlineData("s_")]
+    public void Prefix接続アンダースコア_単一語_UNKNOWNはScreamingSnakeCaseかつPrefixedになる(string prefix)
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault(prefixProvider: new TestPrefixProvider(prefix));
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize("s_UNKNOWN");
+
+        var success = classifier.TryClassify(
+            tokens,
+            out var result,
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider(prefix),
+            });
+
+        Assert.True(success);
+        Assert.Equal(CaseStyle.ScreamingSnakeCase, result.Style);
+        Assert.True(result.Prefixed);
+    }
+
+    [Fact]
     public void sourceなしトークンはUnknownを返す()
     {
         var classifier = new DefaultCaseClassifier();

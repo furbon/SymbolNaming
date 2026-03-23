@@ -21,4 +21,14 @@ public sealed class CaseAnalysisOptions
     /// 頭字語を 1 語として扱うかどうかを示す互換オプションです。
     /// </summary>
     public bool TreatAcronymsAsSingleWord { get; set; } = true;
+
+    /// <summary>
+    /// セパレーターなし単一語で複数スタイルが成立する場合の解決ポリシーです。
+    /// </summary>
+    public AmbiguousSingleTokenPolicy AmbiguousSingleTokenPolicy { get; set; } = AmbiguousSingleTokenPolicy.PreferPascalOrCamel;
+
+    /// <summary>
+    /// <see cref="AmbiguousSingleTokenPolicy.UseCustomResolver"/> 指定時に使用するカスタム解決関数です。
+    /// </summary>
+    public Func<CaseStyleMatchSet, CaseStyle?>? AmbiguousSingleTokenResolver { get; set; }
 }
