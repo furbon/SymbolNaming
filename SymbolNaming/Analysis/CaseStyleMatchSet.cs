@@ -5,6 +5,8 @@ namespace SymbolNaming.Analysis;
 /// </summary>
 public readonly struct CaseStyleMatchSet
 {
+    private readonly byte _count;
+
     /// <summary>
     /// 候補集合を初期化します。
     /// </summary>
@@ -15,6 +17,34 @@ public readonly struct CaseStyleMatchSet
         UpperSnakeCase = upperSnakeCase;
         LowerSnakeCase = lowerSnakeCase;
         ScreamingSnakeCase = screamingSnakeCase;
+
+        var count = 0;
+        if (pascalCase)
+        {
+            count++;
+        }
+
+        if (camelCase)
+        {
+            count++;
+        }
+
+        if (upperSnakeCase)
+        {
+            count++;
+        }
+
+        if (lowerSnakeCase)
+        {
+            count++;
+        }
+
+        if (screamingSnakeCase)
+        {
+            count++;
+        }
+
+        _count = (byte)count;
     }
 
     /// <summary>
@@ -69,37 +99,5 @@ public readonly struct CaseStyleMatchSet
         }
     }
 
-    internal int Count
-    {
-        get
-        {
-            var count = 0;
-            if (PascalCase)
-            {
-                count++;
-            }
-
-            if (CamelCase)
-            {
-                count++;
-            }
-
-            if (UpperSnakeCase)
-            {
-                count++;
-            }
-
-            if (LowerSnakeCase)
-            {
-                count++;
-            }
-
-            if (ScreamingSnakeCase)
-            {
-                count++;
-            }
-
-            return count;
-        }
-    }
+    internal int Count => _count;
 }

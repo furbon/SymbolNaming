@@ -8,6 +8,8 @@ namespace SymbolNaming.Analysis;
 /// </summary>
 public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
 {
+    private static readonly CaseAnalysisOptions DefaultOptions = new();
+
     /// <summary>
     /// トークン列を分類し、分類不能時は <see cref="CaseClassificationResult.Unknown"/> を返します。
     /// </summary>
@@ -54,14 +56,14 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
             return default;
         }
 
-        options ??= new CaseAnalysisOptions();
+        options ??= DefaultOptions;
 
-        if (!TryGetTargetWords(tokens, options, out var targetWords, out _, out var hasUnderscoreSeparator))
+        if (!TryGetTargetWords(tokens, options, out var targetWords))
         {
             return default;
         }
 
-        return BuildMatchSet(tokens, targetWords, hasUnderscoreSeparator);
+        return BuildMatchSet(tokens, targetWords);
     }
 
     /// <summary>
@@ -79,14 +81,14 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
             return default;
         }
 
-        options ??= new CaseAnalysisOptions();
+        options ??= DefaultOptions;
 
-        if (!TryGetTargetWords(source, tokens, options, out var targetWords, out _, out var hasUnderscoreSeparator))
+        if (!TryGetTargetWords(source, tokens, options, out var targetWords))
         {
             return default;
         }
 
-        return BuildMatchSet(source, targetWords, hasUnderscoreSeparator);
+        return BuildMatchSet(source, tokens, targetWords);
     }
 
     /// <summary>
@@ -105,22 +107,22 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
             return false;
         }
 
-        options ??= new CaseAnalysisOptions();
+        options ??= DefaultOptions;
 
-        if (!TryGetTargetWords(tokens, options, out var targetWords, out var isPrefixed, out var hasUnderscoreSeparator))
+        if (!TryGetTargetWords(tokens, options, out var targetWords))
         {
             result = CaseClassificationResult.Unknown;
             return false;
         }
 
-        var style = ResolveStyle(tokens, targetWords, hasUnderscoreSeparator, options);
+        var style = ResolveStyle(tokens, targetWords, options);
         if (style == CaseStyle.Unknown)
         {
             result = CaseClassificationResult.Unknown;
             return false;
         }
 
-        result = new CaseClassificationResult(style, isPrefixed);
+        result = new CaseClassificationResult(style, targetWords.IsPrefixed);
         return true;
     }
 
@@ -140,121 +142,157 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
             return false;
         }
 
-        options ??= new CaseAnalysisOptions();
+        options ??= DefaultOptions;
 
-        if (!TryGetTargetWords(source, tokens, options, out var targetWords, out var isPrefixed, out var hasUnderscoreSeparator))
+        if (!TryGetTargetWords(source, tokens, options, out var targetWords))
         {
             result = CaseClassificationResult.Unknown;
             return false;
         }
 
-        var style = ResolveStyle(source, targetWords, hasUnderscoreSeparator, options);
+        var style = ResolveStyle(source, tokens, targetWords, options);
         if (style == CaseStyle.Unknown)
         {
             result = CaseClassificationResult.Unknown;
             return false;
         }
 
-        result = new CaseClassificationResult(style, isPrefixed);
+        result = new CaseClassificationResult(style, targetWords.IsPrefixed);
         return true;
     }
 
-    private static bool TryGetTargetWords(TokenList tokens, CaseAnalysisOptions options, out List<Token> targetWords, out bool isPrefixed, out bool hasUnderscoreSeparator)
+    private static bool TryGetTargetWords(TokenList tokens, CaseAnalysisOptions options, out TargetWordInfo targetWords)
     {
-        targetWords = new List<Token>();
-        isPrefixed = false;
-        hasUnderscoreSeparator = false;
+        targetWords = default;
 
         if (!tokens.HasSource)
         {
             return false;
         }
 
-        var words = CollectWordLikeTokens(tokens);
-        if (words.Count == 0)
+        if (!TryGetWordLikeInfo(tokens, out var wordLikeCount, out var firstWordLikeIndex, out var secondWordLikeIndex))
         {
             return false;
         }
 
-        isPrefixed = words.Count >= 2 && IsPrefixToken(words[0], tokens, options);
-        targetWords = isPrefixed ? SliceTail(words) : words;
-        hasUnderscoreSeparator = HasMeaningfulUnderscoreSeparator(tokens, options);
-        return targetWords.Count > 0;
-    }
+        var isPrefixed = wordLikeCount >= 2 && IsPrefixToken(tokens[firstWordLikeIndex], tokens, options);
+        var firstTargetIndex = isPrefixed ? secondWordLikeIndex : firstWordLikeIndex;
+        var targetWordCount = isPrefixed ? wordLikeCount - 1 : wordLikeCount;
 
-    private static bool TryGetTargetWords(ReadOnlySpan<char> source, TokenList tokens, CaseAnalysisOptions options, out List<Token> targetWords, out bool isPrefixed, out bool hasUnderscoreSeparator)
-    {
-        targetWords = new List<Token>();
-        isPrefixed = false;
-        hasUnderscoreSeparator = false;
-
-        var words = CollectWordLikeTokens(tokens);
-        if (words.Count == 0)
+        if (firstTargetIndex < 0 || targetWordCount <= 0)
         {
             return false;
         }
 
-        isPrefixed = words.Count >= 2 && IsPrefixToken(words[0], source, options);
-        targetWords = isPrefixed ? SliceTail(words) : words;
-        hasUnderscoreSeparator = HasMeaningfulUnderscoreSeparator(tokens, source, options);
-        return targetWords.Count > 0;
+        targetWords = new TargetWordInfo(
+            firstTargetIndex,
+            targetWordCount,
+            isPrefixed,
+            HasMeaningfulUnderscoreSeparator(tokens, options));
+
+        return true;
     }
 
-    private static List<Token> CollectWordLikeTokens(TokenList tokens)
+    private static bool TryGetTargetWords(ReadOnlySpan<char> source, TokenList tokens, CaseAnalysisOptions options, out TargetWordInfo targetWords)
     {
-        var words = new List<Token>(tokens.Count);
-        foreach (var token in tokens)
+        targetWords = default;
+
+        if (!TryGetWordLikeInfo(tokens, out var wordLikeCount, out var firstWordLikeIndex, out var secondWordLikeIndex))
         {
-            if (token.Category == TokenCategory.Word || token.Category == TokenCategory.Dictionary || token.Category == TokenCategory.Prefix)
+            return false;
+        }
+
+        var isPrefixed = wordLikeCount >= 2 && IsPrefixToken(tokens[firstWordLikeIndex], source, options);
+        var firstTargetIndex = isPrefixed ? secondWordLikeIndex : firstWordLikeIndex;
+        var targetWordCount = isPrefixed ? wordLikeCount - 1 : wordLikeCount;
+
+        if (firstTargetIndex < 0 || targetWordCount <= 0)
+        {
+            return false;
+        }
+
+        targetWords = new TargetWordInfo(
+            firstTargetIndex,
+            targetWordCount,
+            isPrefixed,
+            HasMeaningfulUnderscoreSeparator(tokens, source, options));
+
+        return true;
+    }
+
+    private static bool TryGetWordLikeInfo(TokenList tokens, out int wordLikeCount, out int firstWordLikeIndex, out int secondWordLikeIndex)
+    {
+        wordLikeCount = 0;
+        firstWordLikeIndex = -1;
+        secondWordLikeIndex = -1;
+
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            if (!IsWordLike(tokens[i].Category))
             {
-                words.Add(token);
+                continue;
+            }
+
+            wordLikeCount++;
+            if (firstWordLikeIndex < 0)
+            {
+                firstWordLikeIndex = i;
+            }
+            else if (secondWordLikeIndex < 0)
+            {
+                secondWordLikeIndex = i;
             }
         }
 
-        return words;
+        return firstWordLikeIndex >= 0;
     }
 
-    private static List<Token> SliceTail(List<Token> words)
+    private static bool IsWordLike(TokenCategory category)
     {
-        var targetWords = new List<Token>(words.Count - 1);
-        for (var i = 1; i < words.Count; i++)
-        {
-            targetWords.Add(words[i]);
-        }
-
-        return targetWords;
+        return category == TokenCategory.Word || category == TokenCategory.Dictionary || category == TokenCategory.Prefix;
     }
 
-    private static CaseStyle ResolveStyle(TokenList tokens, List<Token> targetWords, bool hasUnderscoreSeparator, CaseAnalysisOptions options)
+    private static CaseStyle ResolveStyle(TokenList tokens, TargetWordInfo targetWords, CaseAnalysisOptions options)
     {
-        var matches = BuildMatchSet(tokens, targetWords, hasUnderscoreSeparator);
-        return ResolveStyleFromMatches(matches, targetWords.Count, hasUnderscoreSeparator, tokens.GetSpan(targetWords[0]), options);
+        var matches = BuildMatchSet(tokens, targetWords);
+        return ResolveStyleFromMatches(
+            matches,
+            targetWords.TargetWordCount,
+            targetWords.HasUnderscoreSeparator,
+            tokens.GetSpan(tokens[targetWords.FirstTargetWordIndex]),
+            options);
     }
 
-    private static CaseStyle ResolveStyle(ReadOnlySpan<char> source, List<Token> targetWords, bool hasUnderscoreSeparator, CaseAnalysisOptions options)
+    private static CaseStyle ResolveStyle(ReadOnlySpan<char> source, TokenList tokens, TargetWordInfo targetWords, CaseAnalysisOptions options)
     {
-        var matches = BuildMatchSet(source, targetWords, hasUnderscoreSeparator);
-        return ResolveStyleFromMatches(matches, targetWords.Count, hasUnderscoreSeparator, source.Slice(targetWords[0].Start, targetWords[0].Length), options);
+        var matches = BuildMatchSet(source, tokens, targetWords);
+        var firstTargetWord = tokens[targetWords.FirstTargetWordIndex];
+        return ResolveStyleFromMatches(
+            matches,
+            targetWords.TargetWordCount,
+            targetWords.HasUnderscoreSeparator,
+            source.Slice(firstTargetWord.Start, firstTargetWord.Length),
+            options);
     }
 
-    private static CaseStyleMatchSet BuildMatchSet(TokenList tokens, List<Token> targetWords, bool hasUnderscoreSeparator)
+    private static CaseStyleMatchSet BuildMatchSet(TokenList tokens, TargetWordInfo targetWords)
     {
-        if (targetWords.Count == 0)
+        if (targetWords.TargetWordCount == 0)
         {
             return default;
         }
 
-        if (hasUnderscoreSeparator)
+        if (targetWords.HasUnderscoreSeparator)
         {
             return new CaseStyleMatchSet(
                 pascalCase: false,
                 camelCase: false,
-                upperSnakeCase: AllWordsPascal(targetWords, tokens),
-                lowerSnakeCase: AllWordsLower(targetWords, tokens),
-                screamingSnakeCase: AllWordsUpper(targetWords, tokens));
+                upperSnakeCase: AllWordsPascal(tokens, targetWords),
+                lowerSnakeCase: AllWordsLower(tokens, targetWords),
+                screamingSnakeCase: AllWordsUpper(tokens, targetWords));
         }
 
-        var firstWordSpan = tokens.GetSpan(targetWords[0]);
+        var firstWordSpan = tokens.GetSpan(tokens[targetWords.FirstTargetWordIndex]);
         if (firstWordSpan.Length == 0)
         {
             return default;
@@ -263,7 +301,7 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
         var startsUpper = char.IsUpper(firstWordSpan[0]);
         var startsLower = char.IsLower(firstWordSpan[0]);
 
-        if (targetWords.Count > 1)
+        if (targetWords.TargetWordCount > 1)
         {
             return new CaseStyleMatchSet(
                 pascalCase: startsUpper,
@@ -276,24 +314,25 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
         return BuildSingleWordNoSeparatorMatchSet(firstWordSpan, startsLower);
     }
 
-    private static CaseStyleMatchSet BuildMatchSet(ReadOnlySpan<char> source, List<Token> targetWords, bool hasUnderscoreSeparator)
+    private static CaseStyleMatchSet BuildMatchSet(ReadOnlySpan<char> source, TokenList tokens, TargetWordInfo targetWords)
     {
-        if (targetWords.Count == 0)
+        if (targetWords.TargetWordCount == 0)
         {
             return default;
         }
 
-        if (hasUnderscoreSeparator)
+        if (targetWords.HasUnderscoreSeparator)
         {
             return new CaseStyleMatchSet(
                 pascalCase: false,
                 camelCase: false,
-                upperSnakeCase: AllWordsPascal(targetWords, source),
-                lowerSnakeCase: AllWordsLower(targetWords, source),
-                screamingSnakeCase: AllWordsUpper(targetWords, source));
+                upperSnakeCase: AllWordsPascal(source, tokens, targetWords),
+                lowerSnakeCase: AllWordsLower(source, tokens, targetWords),
+                screamingSnakeCase: AllWordsUpper(source, tokens, targetWords));
         }
 
-        var firstWordSpan = source.Slice(targetWords[0].Start, targetWords[0].Length);
+        var firstTargetWord = tokens[targetWords.FirstTargetWordIndex];
+        var firstWordSpan = source.Slice(firstTargetWord.Start, firstTargetWord.Length);
         if (firstWordSpan.Length == 0)
         {
             return default;
@@ -302,7 +341,7 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
         var startsUpper = char.IsUpper(firstWordSpan[0]);
         var startsLower = char.IsLower(firstWordSpan[0]);
 
-        if (targetWords.Count > 1)
+        if (targetWords.TargetWordCount > 1)
         {
             return new CaseStyleMatchSet(
                 pascalCase: startsUpper,
@@ -317,10 +356,11 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
 
     private static CaseStyleMatchSet BuildSingleWordNoSeparatorMatchSet(ReadOnlySpan<char> text, bool startsLower)
     {
+        var isPascal = IsPascalWord(text);
         return new CaseStyleMatchSet(
-            pascalCase: IsPascalWord(text),
+            pascalCase: isPascal,
             camelCase: startsLower,
-            upperSnakeCase: IsPascalWord(text),
+            upperSnakeCase: isPascal,
             lowerSnakeCase: AllLowerWord(text),
             screamingSnakeCase: ContainsLetterWithCase(text, isUpper: true));
     }
@@ -472,82 +512,208 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
         return ContainsLetterWithCase(text, isUpper: false);
     }
 
-    private static bool AllWordsLower(IEnumerable<Token> words, TokenList tokens)
+    private static bool AllWordsLower(TokenList tokens, TargetWordInfo info)
     {
-        foreach (var word in words)
+        var matched = 0;
+        var seenWordLike = 0;
+
+        for (var i = 0; i < tokens.Count; i++)
         {
-            if (!ContainsLetterWithCase(tokens.GetSpan(word), isUpper: false))
+            var token = tokens[i];
+            if (!IsWordLike(token.Category))
+            {
+                continue;
+            }
+
+            if (seenWordLike < info.SkipWordLikeCount)
+            {
+                seenWordLike++;
+                continue;
+            }
+
+            if (!ContainsLetterWithCase(tokens.GetSpan(token), isUpper: false))
             {
                 return false;
             }
+
+            matched++;
+            if (matched == info.TargetWordCount)
+            {
+                return true;
+            }
         }
 
-        return true;
+        return matched == info.TargetWordCount;
     }
 
-    private static bool AllWordsLower(IEnumerable<Token> words, ReadOnlySpan<char> source)
+    private static bool AllWordsLower(ReadOnlySpan<char> source, TokenList tokens, TargetWordInfo info)
     {
-        foreach (var word in words)
+        var matched = 0;
+        var seenWordLike = 0;
+
+        for (var i = 0; i < tokens.Count; i++)
         {
-            if (!ContainsLetterWithCase(source.Slice(word.Start, word.Length), isUpper: false))
+            var token = tokens[i];
+            if (!IsWordLike(token.Category))
+            {
+                continue;
+            }
+
+            if (seenWordLike < info.SkipWordLikeCount)
+            {
+                seenWordLike++;
+                continue;
+            }
+
+            if (!ContainsLetterWithCase(source.Slice(token.Start, token.Length), isUpper: false))
             {
                 return false;
             }
+
+            matched++;
+            if (matched == info.TargetWordCount)
+            {
+                return true;
+            }
         }
 
-        return true;
+        return matched == info.TargetWordCount;
     }
 
-    private static bool AllWordsUpper(IEnumerable<Token> words, TokenList tokens)
+    private static bool AllWordsUpper(TokenList tokens, TargetWordInfo info)
     {
-        foreach (var word in words)
+        var matched = 0;
+        var seenWordLike = 0;
+
+        for (var i = 0; i < tokens.Count; i++)
         {
-            if (!ContainsLetterWithCase(tokens.GetSpan(word), isUpper: true))
+            var token = tokens[i];
+            if (!IsWordLike(token.Category))
+            {
+                continue;
+            }
+
+            if (seenWordLike < info.SkipWordLikeCount)
+            {
+                seenWordLike++;
+                continue;
+            }
+
+            if (!ContainsLetterWithCase(tokens.GetSpan(token), isUpper: true))
             {
                 return false;
             }
+
+            matched++;
+            if (matched == info.TargetWordCount)
+            {
+                return true;
+            }
         }
 
-        return true;
+        return matched == info.TargetWordCount;
     }
 
-    private static bool AllWordsUpper(IEnumerable<Token> words, ReadOnlySpan<char> source)
+    private static bool AllWordsUpper(ReadOnlySpan<char> source, TokenList tokens, TargetWordInfo info)
     {
-        foreach (var word in words)
+        var matched = 0;
+        var seenWordLike = 0;
+
+        for (var i = 0; i < tokens.Count; i++)
         {
-            if (!ContainsLetterWithCase(source.Slice(word.Start, word.Length), isUpper: true))
+            var token = tokens[i];
+            if (!IsWordLike(token.Category))
+            {
+                continue;
+            }
+
+            if (seenWordLike < info.SkipWordLikeCount)
+            {
+                seenWordLike++;
+                continue;
+            }
+
+            if (!ContainsLetterWithCase(source.Slice(token.Start, token.Length), isUpper: true))
             {
                 return false;
             }
+
+            matched++;
+            if (matched == info.TargetWordCount)
+            {
+                return true;
+            }
         }
 
-        return true;
+        return matched == info.TargetWordCount;
     }
 
-    private static bool AllWordsPascal(IEnumerable<Token> words, TokenList tokens)
+    private static bool AllWordsPascal(TokenList tokens, TargetWordInfo info)
     {
-        foreach (var word in words)
+        var matched = 0;
+        var seenWordLike = 0;
+
+        for (var i = 0; i < tokens.Count; i++)
         {
-            if (!IsPascalWord(tokens.GetSpan(word)))
+            var token = tokens[i];
+            if (!IsWordLike(token.Category))
+            {
+                continue;
+            }
+
+            if (seenWordLike < info.SkipWordLikeCount)
+            {
+                seenWordLike++;
+                continue;
+            }
+
+            if (!IsPascalWord(tokens.GetSpan(token)))
             {
                 return false;
             }
+
+            matched++;
+            if (matched == info.TargetWordCount)
+            {
+                return true;
+            }
         }
 
-        return true;
+        return matched == info.TargetWordCount;
     }
 
-    private static bool AllWordsPascal(IEnumerable<Token> words, ReadOnlySpan<char> source)
+    private static bool AllWordsPascal(ReadOnlySpan<char> source, TokenList tokens, TargetWordInfo info)
     {
-        foreach (var word in words)
+        var matched = 0;
+        var seenWordLike = 0;
+
+        for (var i = 0; i < tokens.Count; i++)
         {
-            if (!IsPascalWord(source.Slice(word.Start, word.Length)))
+            var token = tokens[i];
+            if (!IsWordLike(token.Category))
+            {
+                continue;
+            }
+
+            if (seenWordLike < info.SkipWordLikeCount)
+            {
+                seenWordLike++;
+                continue;
+            }
+
+            if (!IsPascalWord(source.Slice(token.Start, token.Length)))
             {
                 return false;
             }
+
+            matched++;
+            if (matched == info.TargetWordCount)
+            {
+                return true;
+            }
         }
 
-        return true;
+        return matched == info.TargetWordCount;
     }
 
     private static bool IsPascalWord(ReadOnlySpan<char> text)
@@ -798,5 +964,26 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
 
         var next = tokens[nextIndex];
         return next.Category == TokenCategory.Word || next.Category == TokenCategory.Dictionary || next.Category == TokenCategory.Prefix;
+    }
+
+    private readonly struct TargetWordInfo
+    {
+        public TargetWordInfo(int firstTargetWordIndex, int targetWordCount, bool isPrefixed, bool hasUnderscoreSeparator)
+        {
+            FirstTargetWordIndex = firstTargetWordIndex;
+            TargetWordCount = targetWordCount;
+            IsPrefixed = isPrefixed;
+            HasUnderscoreSeparator = hasUnderscoreSeparator;
+        }
+
+        public int FirstTargetWordIndex { get; }
+
+        public int TargetWordCount { get; }
+
+        public bool IsPrefixed { get; }
+
+        public bool HasUnderscoreSeparator { get; }
+
+        public int SkipWordLikeCount => IsPrefixed ? 1 : 0;
     }
 }
