@@ -133,6 +133,121 @@ public class DefaultCaseClassifierTests
     }
 
     [Theory]
+    [InlineData("s", "s_Player", CaseStyle.PascalCase)]
+    [InlineData("s_", "s_Player", CaseStyle.PascalCase)]
+    [InlineData("s", "s_player", CaseStyle.CamelCase)]
+    [InlineData("s_", "s_player", CaseStyle.CamelCase)]
+    public void Prefix接続後が単一トークンの場合_既定方針ではPascalCamel優先で判定できる(string prefix, string input, CaseStyle expected)
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault(prefixProvider: new TestPrefixProvider(prefix));
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize(input);
+
+        var success = classifier.TryClassify(
+            tokens,
+            out var result,
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider(prefix),
+            });
+
+        Assert.True(success);
+        Assert.Equal(expected, result.Style);
+        Assert.True(result.Prefixed);
+    }
+
+    [Theory]
+    [InlineData("s", "s_Player", CaseStyle.UpperSnakeCase)]
+    [InlineData("s_", "s_Player", CaseStyle.UpperSnakeCase)]
+    [InlineData("s", "s_player", CaseStyle.LowerSnakeCase)]
+    [InlineData("s_", "s_player", CaseStyle.LowerSnakeCase)]
+    public void Prefix接続後が単一トークンの場合_PreferSnakeCaseでスネークケースを優先できる(string prefix, string input, CaseStyle expected)
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault(prefixProvider: new TestPrefixProvider(prefix));
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize(input);
+
+        var success = classifier.TryClassify(
+            tokens,
+            out var result,
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider(prefix),
+                AmbiguousSingleTokenPolicy = AmbiguousSingleTokenPolicy.PreferSnakeCase,
+            });
+
+        Assert.True(success);
+        Assert.Equal(expected, result.Style);
+        Assert.True(result.Prefixed);
+    }
+
+    [Theory]
+    [InlineData("s", "s_Player")]
+    [InlineData("s_", "s_Player")]
+    public void Prefix接続後が単一トークンの場合_ReturnUnknownでUnknownを返せる(string prefix, string input)
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault(prefixProvider: new TestPrefixProvider(prefix));
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize(input);
+
+        var success = classifier.TryClassify(
+            tokens,
+            out var result,
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider(prefix),
+                AmbiguousSingleTokenPolicy = AmbiguousSingleTokenPolicy.ReturnUnknown,
+            });
+
+        Assert.False(success);
+        Assert.Equal(CaseStyle.Unknown, result.Style);
+    }
+
+    [Fact]
+    public void 単一トークン曖昧判定はCustomResolverが不正値を返したらUnknownを返す()
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault();
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize("Player");
+
+        var success = classifier.TryClassify(
+            tokens,
+            out var result,
+            new CaseAnalysisOptions
+            {
+                AmbiguousSingleTokenPolicy = AmbiguousSingleTokenPolicy.UseCustomResolver,
+                AmbiguousSingleTokenResolver = _ => CaseStyle.LowerSnakeCase,
+            });
+
+        Assert.False(success);
+        Assert.Equal(CaseStyle.Unknown, result.Style);
+    }
+
+    [Theory]
+    [InlineData("s", new[] { TokenCategory.Prefix, TokenCategory.Separator, TokenCategory.Word, TokenCategory.Word })]
+    [InlineData("s_", new[] { TokenCategory.Prefix, TokenCategory.Word, TokenCategory.Word })]
+    public void s_PLayerはプレフィックスを除くと複数トークンとして分割されPascalCaseになる(string prefix, TokenCategory[] expectedCategories)
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault(prefixProvider: new TestPrefixProvider(prefix));
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize("s_PLayer");
+
+        Assert.Equal(expectedCategories, tokens.Select(t => t.Category).ToArray());
+
+        var success = classifier.TryClassify(
+            tokens,
+            out var result,
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider(prefix),
+            });
+
+        Assert.True(success);
+        Assert.Equal(CaseStyle.PascalCase, result.Style);
+        Assert.True(result.Prefixed);
+    }
+
+    [Theory]
     [InlineData("s")]
     [InlineData("s_")]
     public void Prefix接続アンダースコア_単一語_UNKNOWNはScreamingSnakeCaseかつPrefixedになる(string prefix)
