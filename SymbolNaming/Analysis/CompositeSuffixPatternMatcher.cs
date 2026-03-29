@@ -33,11 +33,24 @@ public sealed class CompositeSuffixPatternMatcher : ICompositeSymbolPatternMatch
             throw new ArgumentException("At least one rule is required.", nameof(rules));
         }
 
+        var patternIds = new HashSet<string>(StringComparer.Ordinal);
+
         for (var i = 0; i < _rules.Length; i++)
         {
             if (_rules[i] is null)
             {
                 throw new ArgumentException("Rules must not contain null.", nameof(rules));
+            }
+
+            var patternId = _rules[i].PatternId;
+            if (string.IsNullOrWhiteSpace(patternId))
+            {
+                throw new ArgumentException("Pattern id must not be null or empty.", nameof(rules));
+            }
+
+            if (!patternIds.Add(patternId))
+            {
+                throw new ArgumentException($"Duplicate pattern id is not allowed: '{patternId}'.", nameof(rules));
             }
         }
     }
@@ -58,11 +71,13 @@ public sealed class CompositeSuffixPatternMatcher : ICompositeSymbolPatternMatch
 
         var baseSpan = source.Slice(baseStart, baseLength);
         var suffixSpan = source.Slice(suffixStart, suffixLength);
+        string? baseText = null;
+        string? suffixText = null;
 
         for (var i = 0; i < _rules.Length; i++)
         {
             var rule = _rules[i];
-            if (!rule.IsMatch(baseSpan, suffixSpan))
+            if (!IsRuleMatch(rule, baseSpan, suffixSpan, ref baseText, ref suffixText))
             {
                 continue;
             }
@@ -73,6 +88,23 @@ public sealed class CompositeSuffixPatternMatcher : ICompositeSymbolPatternMatch
 
         match = default;
         return false;
+    }
+
+    private static bool IsRuleMatch(
+        ICompositeSuffixPatternRule rule,
+        ReadOnlySpan<char> baseSpan,
+        ReadOnlySpan<char> suffixSpan,
+        ref string? baseText,
+        ref string? suffixText)
+    {
+        if (rule is ICompositeSuffixPatternRuleRuntime optimizedRule)
+        {
+            baseText ??= baseSpan.ToString();
+            suffixText ??= suffixSpan.ToString();
+            return optimizedRule.IsMatch(baseText, suffixText);
+        }
+
+        return rule.IsMatch(baseSpan, suffixSpan);
     }
 
     private static bool TrySplitBaseAndSuffix(ReadOnlySpan<char> source, TokenList tokens, out int baseStart, out int baseLength, out int suffixStart, out int suffixLength)

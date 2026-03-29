@@ -6,6 +6,7 @@ namespace SymbolNaming.Analysis;
 /// 正規表現でベース名・サフィックス一致を判定するルールです。
 /// </summary>
 public sealed class RegexCompositeSuffixPatternRule : ICompositeSuffixPatternRule
+    , ICompositeSuffixPatternRuleRuntime
 {
     private readonly Regex _baseRegex;
     private readonly Regex _suffixRegex;
@@ -46,6 +47,16 @@ public sealed class RegexCompositeSuffixPatternRule : ICompositeSuffixPatternRul
             return false;
         }
 
-        return _baseRegex.IsMatch(baseName.ToString()) && _suffixRegex.IsMatch(suffix.ToString());
+        return IsMatch(baseName.ToString(), suffix.ToString());
+    }
+
+    bool ICompositeSuffixPatternRuleRuntime.IsMatch(string baseName, string suffix)
+    {
+        if (string.IsNullOrEmpty(baseName) || string.IsNullOrEmpty(suffix))
+        {
+            return false;
+        }
+
+        return _baseRegex.IsMatch(baseName) && _suffixRegex.IsMatch(suffix);
     }
 }

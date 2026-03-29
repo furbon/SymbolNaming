@@ -181,6 +181,9 @@ var inspection = engine.Inspect("m_UserName", options);
 - `Warnings`（注意すべき分割パターン）
 - `CompositePattern`（複合サフィックス一致時）
 
+`CompositeSuffixPatternMatcher` を利用する場合、ルール構築時に `PatternId` の重複・空値が検証されます。
+`RegexCompositeSuffixPatternRule` を組み合わせる実行経路では、判定時の文字列化を最小化して高頻度評価時の割り当てを抑制します。
+
 `Inspect` の警告判定は `IInspectionRule` で拡張できます。
 `SymbolCaseEngine` 既定構成では `SymbolInspectionWarningAnalyzer` が組み込まれており、
 必要に応じてコンストラクタでカスタムルール配列を指定できます。

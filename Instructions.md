@@ -97,6 +97,8 @@
   を取得可能にする。
 - `Inspect` の警告判定は `IInspectionRule` で拡張可能とし、既定ルールは `SymbolInspectionWarningAnalyzer` を利用する。
 - ルール実行は登録順のパイプラインで行い、同一入力に対する `Warnings` の順序決定性を維持する。
+- `CompositeSuffixPatternMatcher` はルール構築時に ID 重複・空値を検証し、不正設定を早期に検出する。
+- 複合パターン判定は高頻度実行を想定し、実行時の不要な文字列化を抑える経路を優先する。
 
 ## テスト運用方針
 - xUnit テストを仕様の一次ソースとして扱う。
