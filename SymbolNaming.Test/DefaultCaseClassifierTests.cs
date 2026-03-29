@@ -354,9 +354,14 @@ public class DefaultCaseClassifierTests
     [Theory]
     [InlineData("UserName", CaseStyle.PascalCase, false)]
     [InlineData("userName", CaseStyle.CamelCase, false)]
+    [InlineData("_userName", CaseStyle.CamelCase, false)]
+    [InlineData("__UserName__", CaseStyle.PascalCase, false)]
     [InlineData("user_name", CaseStyle.LowerSnakeCase, false)]
+    [InlineData("__built_in_process", CaseStyle.LowerSnakeCase, false)]
+    [InlineData("built_in_process__", CaseStyle.LowerSnakeCase, false)]
     [InlineData("my_snake_case", CaseStyle.LowerSnakeCase, false)]
     [InlineData("My_Test_Value", CaseStyle.UpperSnakeCase, false)]
+    [InlineData("__MY_TEST_VALUE__", CaseStyle.ScreamingSnakeCase, false)]
     [InlineData("USER_NAME", CaseStyle.ScreamingSnakeCase, false)]
     [InlineData("TryParseXMLComment", CaseStyle.PascalCase, false)]
     [InlineData("vector3Table", CaseStyle.CamelCase, false)]
@@ -380,6 +385,52 @@ public class DefaultCaseClassifierTests
         Assert.True(success);
         Assert.Equal(expectedStyle, result.Style);
         Assert.Equal(expectedPrefixed, result.Prefixed);
+    }
+
+    [Theory]
+    [InlineData("_userName", 1, 0)]
+    [InlineData("__built_in_process", 2, 0)]
+    [InlineData("built_in_process__", 0, 2)]
+    [InlineData("__USER_NAME__", 2, 2)]
+    public void 分類結果に先頭末尾アンダースコア装飾情報を保持できる(string input, int expectedLeading, int expectedTrailing)
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault(prefixProvider: new TestPrefixProvider("m"));
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize(input);
+
+        var success = classifier.TryClassify(
+            tokens,
+            out var result,
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider("m"),
+            });
+
+        Assert.True(success);
+        Assert.Equal(expectedLeading, result.Decoration.LeadingUnderscoreCount);
+        Assert.Equal(expectedTrailing, result.Decoration.TrailingUnderscoreCount);
+    }
+
+    [Theory]
+    [InlineData("m", "m__UserName")]
+    [InlineData("s_", "s__UserName")]
+    public void Prefix接続に余分なアンダースコアがある場合はUnknownを返す(string prefix, string input)
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault(prefixProvider: new TestPrefixProvider(prefix));
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize(input);
+
+        var success = classifier.TryClassify(
+            tokens,
+            out var result,
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider(prefix),
+            });
+
+        Assert.False(success);
+        Assert.Equal(CaseStyle.Unknown, result.Style);
+        Assert.False(result.Prefixed);
     }
 
     [Theory]

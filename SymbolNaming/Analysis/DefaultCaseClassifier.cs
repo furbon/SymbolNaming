@@ -122,7 +122,7 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
             return false;
         }
 
-        result = new CaseClassificationResult(style, targetWords.IsPrefixed);
+        result = new CaseClassificationResult(style, targetWords.IsPrefixed, targetWords.Decoration);
         return true;
     }
 
@@ -157,7 +157,7 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
             return false;
         }
 
-        result = new CaseClassificationResult(style, targetWords.IsPrefixed);
+        result = new CaseClassificationResult(style, targetWords.IsPrefixed, targetWords.Decoration);
         return true;
     }
 
@@ -170,7 +170,7 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
             return false;
         }
 
-        if (!TryGetWordLikeInfo(tokens, out var wordLikeCount, out var firstWordLikeIndex, out var secondWordLikeIndex))
+        if (!TryGetWordLikeInfo(tokens, out var wordLikeCount, out var firstWordLikeIndex, out var secondWordLikeIndex, out var lastWordLikeIndex))
         {
             return false;
         }
@@ -184,11 +184,18 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
             return false;
         }
 
+        if (isPrefixed && !HasValidPrefixConnector(tokens, options, firstWordLikeIndex, firstTargetIndex))
+        {
+            return false;
+        }
+
         targetWords = new TargetWordInfo(
             firstTargetIndex,
+            lastWordLikeIndex,
             targetWordCount,
             isPrefixed,
-            HasMeaningfulUnderscoreSeparator(tokens, options));
+            HasMeaningfulUnderscoreSeparator(tokens, options, firstTargetIndex, lastWordLikeIndex),
+            GetDecorationInfo(tokens, options, firstTargetIndex, lastWordLikeIndex));
 
         return true;
     }
@@ -197,7 +204,7 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
     {
         targetWords = default;
 
-        if (!TryGetWordLikeInfo(tokens, out var wordLikeCount, out var firstWordLikeIndex, out var secondWordLikeIndex))
+        if (!TryGetWordLikeInfo(tokens, out var wordLikeCount, out var firstWordLikeIndex, out var secondWordLikeIndex, out var lastWordLikeIndex))
         {
             return false;
         }
@@ -211,20 +218,28 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
             return false;
         }
 
+        if (isPrefixed && !HasValidPrefixConnector(tokens, source, options, firstWordLikeIndex, firstTargetIndex))
+        {
+            return false;
+        }
+
         targetWords = new TargetWordInfo(
             firstTargetIndex,
+            lastWordLikeIndex,
             targetWordCount,
             isPrefixed,
-            HasMeaningfulUnderscoreSeparator(tokens, source, options));
+            HasMeaningfulUnderscoreSeparator(tokens, source, options, firstTargetIndex, lastWordLikeIndex),
+            GetDecorationInfo(tokens, source, options, firstTargetIndex, lastWordLikeIndex));
 
         return true;
     }
 
-    private static bool TryGetWordLikeInfo(TokenList tokens, out int wordLikeCount, out int firstWordLikeIndex, out int secondWordLikeIndex)
+    private static bool TryGetWordLikeInfo(TokenList tokens, out int wordLikeCount, out int firstWordLikeIndex, out int secondWordLikeIndex, out int lastWordLikeIndex)
     {
         wordLikeCount = 0;
         firstWordLikeIndex = -1;
         secondWordLikeIndex = -1;
+        lastWordLikeIndex = -1;
 
         for (var i = 0; i < tokens.Count; i++)
         {
@@ -234,6 +249,7 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
             }
 
             wordLikeCount++;
+            lastWordLikeIndex = i;
             if (firstWordLikeIndex < 0)
             {
                 firstWordLikeIndex = i;
@@ -891,12 +907,17 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
         return span.Length == 1 && span[0] == '_';
     }
 
-    private static bool HasMeaningfulUnderscoreSeparator(TokenList tokens, CaseAnalysisOptions options)
+    private static bool HasMeaningfulUnderscoreSeparator(TokenList tokens, CaseAnalysisOptions options, int firstTargetWordIndex, int lastTargetWordIndex)
     {
         for (var i = 0; i < tokens.Count; ++i)
         {
             var token = tokens[i];
             if (token.Category != TokenCategory.Separator || !IsUnderscore(token, tokens))
+            {
+                continue;
+            }
+
+            if (i < firstTargetWordIndex || i > lastTargetWordIndex)
             {
                 continue;
             }
@@ -912,12 +933,17 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
         return false;
     }
 
-    private static bool HasMeaningfulUnderscoreSeparator(TokenList tokens, ReadOnlySpan<char> source, CaseAnalysisOptions options)
+    private static bool HasMeaningfulUnderscoreSeparator(TokenList tokens, ReadOnlySpan<char> source, CaseAnalysisOptions options, int firstTargetWordIndex, int lastTargetWordIndex)
     {
         for (var i = 0; i < tokens.Count; ++i)
         {
             var token = tokens[i];
             if (token.Category != TokenCategory.Separator || !IsUnderscore(token, source))
+            {
+                continue;
+            }
+
+            if (i < firstTargetWordIndex || i > lastTargetWordIndex)
             {
                 continue;
             }
@@ -931,6 +957,123 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
         }
 
         return false;
+    }
+
+    private static SymbolDecorationInfo GetDecorationInfo(TokenList tokens, CaseAnalysisOptions options, int firstTargetWordIndex, int lastTargetWordIndex)
+    {
+        var leadingCount = 0;
+        for (var i = firstTargetWordIndex - 1; i >= 0; --i)
+        {
+            var token = tokens[i];
+            if (token.Category != TokenCategory.Separator || !IsUnderscore(token, tokens))
+            {
+                break;
+            }
+
+            if (IsPrefixConnectorUnderscore(tokens, i, options))
+            {
+                break;
+            }
+
+            leadingCount++;
+        }
+
+        var trailingCount = 0;
+        for (var i = lastTargetWordIndex + 1; i < tokens.Count; ++i)
+        {
+            var token = tokens[i];
+            if (token.Category != TokenCategory.Separator || !IsUnderscore(token, tokens))
+            {
+                break;
+            }
+
+            trailingCount++;
+        }
+
+        return new SymbolDecorationInfo(leadingCount, trailingCount);
+    }
+
+    private static SymbolDecorationInfo GetDecorationInfo(TokenList tokens, ReadOnlySpan<char> source, CaseAnalysisOptions options, int firstTargetWordIndex, int lastTargetWordIndex)
+    {
+        var leadingCount = 0;
+        for (var i = firstTargetWordIndex - 1; i >= 0; --i)
+        {
+            var token = tokens[i];
+            if (token.Category != TokenCategory.Separator || !IsUnderscore(token, source))
+            {
+                break;
+            }
+
+            if (IsPrefixConnectorUnderscore(tokens, source, i, options))
+            {
+                break;
+            }
+
+            leadingCount++;
+        }
+
+        var trailingCount = 0;
+        for (var i = lastTargetWordIndex + 1; i < tokens.Count; ++i)
+        {
+            var token = tokens[i];
+            if (token.Category != TokenCategory.Separator || !IsUnderscore(token, source))
+            {
+                break;
+            }
+
+            trailingCount++;
+        }
+
+        return new SymbolDecorationInfo(leadingCount, trailingCount);
+    }
+
+    private static bool HasValidPrefixConnector(TokenList tokens, CaseAnalysisOptions options, int prefixTokenIndex, int firstTargetWordIndex)
+    {
+        if (firstTargetWordIndex == prefixTokenIndex + 1)
+        {
+            return true;
+        }
+
+        var prefixSpan = tokens.GetSpan(tokens[prefixTokenIndex]);
+        if (prefixSpan.Length > 0 && prefixSpan[prefixSpan.Length - 1] == '_')
+        {
+            return false;
+        }
+
+        if (firstTargetWordIndex != prefixTokenIndex + 2)
+        {
+            return false;
+        }
+
+        var connectorIndex = prefixTokenIndex + 1;
+        return tokens[connectorIndex].Category == TokenCategory.Separator
+            && IsUnderscore(tokens[connectorIndex], tokens)
+            && IsPrefixConnectorUnderscore(tokens, connectorIndex, options);
+    }
+
+    private static bool HasValidPrefixConnector(TokenList tokens, ReadOnlySpan<char> source, CaseAnalysisOptions options, int prefixTokenIndex, int firstTargetWordIndex)
+    {
+        if (firstTargetWordIndex == prefixTokenIndex + 1)
+        {
+            return true;
+        }
+
+        var prefixToken = tokens[prefixTokenIndex];
+        var prefixSpan = source.Slice(prefixToken.Start, prefixToken.Length);
+        if (prefixSpan.Length > 0 && prefixSpan[prefixSpan.Length - 1] == '_')
+        {
+            return false;
+        }
+
+        if (firstTargetWordIndex != prefixTokenIndex + 2)
+        {
+            return false;
+        }
+
+        var connectorIndex = prefixTokenIndex + 1;
+        return tokens[connectorIndex].Category == TokenCategory.Separator
+            && IsUnderscore(tokens[connectorIndex], source)
+            && IsPrefixConnectorUnderscore(tokens, source, connectorIndex, options);
     }
 
     private static bool IsPrefixConnectorUnderscore(TokenList tokens, int separatorIndex, CaseAnalysisOptions options)
@@ -1011,21 +1154,27 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
 
     private readonly struct TargetWordInfo
     {
-        public TargetWordInfo(int firstTargetWordIndex, int targetWordCount, bool isPrefixed, bool hasUnderscoreSeparator)
+        public TargetWordInfo(int firstTargetWordIndex, int lastTargetWordIndex, int targetWordCount, bool isPrefixed, bool hasUnderscoreSeparator, SymbolDecorationInfo decoration)
         {
             FirstTargetWordIndex = firstTargetWordIndex;
+            LastTargetWordIndex = lastTargetWordIndex;
             TargetWordCount = targetWordCount;
             IsPrefixed = isPrefixed;
             HasUnderscoreSeparator = hasUnderscoreSeparator;
+            Decoration = decoration;
         }
 
         public int FirstTargetWordIndex { get; }
+
+        public int LastTargetWordIndex { get; }
 
         public int TargetWordCount { get; }
 
         public bool IsPrefixed { get; }
 
         public bool HasUnderscoreSeparator { get; }
+
+        public SymbolDecorationInfo Decoration { get; }
 
         public int SkipWordLikeCount => IsPrefixed ? 1 : 0;
     }

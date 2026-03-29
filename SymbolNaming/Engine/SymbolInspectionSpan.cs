@@ -47,6 +47,21 @@ public readonly ref struct SymbolInspectionSpan
     public bool Prefixed => Classification.Prefixed;
 
     /// <summary>
+    /// 先頭/末尾の装飾情報です。
+    /// </summary>
+    public SymbolDecorationInfo Decoration => Classification.Decoration;
+
+    /// <summary>
+    /// 先頭連続アンダースコア数です。
+    /// </summary>
+    public int LeadingUnderscoreCount => Decoration.LeadingUnderscoreCount;
+
+    /// <summary>
+    /// 末尾連続アンダースコア数です。
+    /// </summary>
+    public int TrailingUnderscoreCount => Decoration.TrailingUnderscoreCount;
+
+    /// <summary>
     /// プレフィックスが抽出できたかを示します。
     /// </summary>
     public bool HasPrefix => _sliceInfo.PrefixLength > 0;

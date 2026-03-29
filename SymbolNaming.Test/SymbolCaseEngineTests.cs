@@ -43,6 +43,32 @@ public class SymbolCaseEngineTests
         Assert.False(result.Prefixed);
     }
 
+    [Theory]
+    [InlineData("_userName", CaseStyle.CamelCase)]
+    [InlineData("__built_in_process", CaseStyle.LowerSnakeCase)]
+    [InlineData("__USER_NAME__", CaseStyle.ScreamingSnakeCase)]
+    public void Analyzeは先頭末尾アンダースコア装飾を除いてCase分類できる(string input, CaseStyle expected)
+    {
+        var engine = CreateEngine();
+
+        var result = engine.Analyze(input);
+
+        Assert.Equal(expected, result.Style);
+        Assert.False(result.Prefixed);
+    }
+
+    [Fact]
+    public void Analyzeは先頭末尾アンダースコア装飾情報を返す()
+    {
+        var engine = CreateEngine();
+
+        var result = engine.Analyze("__userName__");
+
+        Assert.Equal(CaseStyle.CamelCase, result.Style);
+        Assert.Equal(2, result.Decoration.LeadingUnderscoreCount);
+        Assert.Equal(2, result.Decoration.TrailingUnderscoreCount);
+    }
+
     [Fact]
     public void Tokenizeは統合済みTokenizerの結果を返す()
     {
@@ -80,6 +106,18 @@ public class SymbolCaseEngineTests
         Assert.True(inspection.HasPrefix);
         Assert.Equal("m", inspection.Prefix);
         Assert.Equal("UserName", inspection.SymbolNameWithoutPrefix);
+    }
+
+    [Fact]
+    public void Inspectは装飾情報を取得できる()
+    {
+        var engine = CreateEngine();
+
+        var inspection = engine.Inspect("__built_in_process__");
+
+        Assert.Equal(CaseStyle.LowerSnakeCase, inspection.CaseStyle);
+        Assert.Equal(2, inspection.LeadingUnderscoreCount);
+        Assert.Equal(2, inspection.TrailingUnderscoreCount);
     }
 
     [Fact]
@@ -134,6 +172,18 @@ public class SymbolCaseEngineTests
         Assert.True(inspection.HasPrefix);
         Assert.Equal("s_", inspection.Prefix.ToString());
         Assert.Equal("UserName", inspection.SymbolNameWithoutPrefix.ToString());
+    }
+
+    [Fact]
+    public void InspectSpanは装飾情報を取得できる()
+    {
+        var engine = CreateEngine();
+
+        var inspection = engine.Inspect("__USER_NAME__".AsSpan());
+
+        Assert.Equal(CaseStyle.ScreamingSnakeCase, inspection.CaseStyle);
+        Assert.Equal(2, inspection.LeadingUnderscoreCount);
+        Assert.Equal(2, inspection.TrailingUnderscoreCount);
     }
 
     [Theory]
