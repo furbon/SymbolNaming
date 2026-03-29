@@ -2,66 +2,32 @@ using SymbolNaming.Dictionaries;
 
 namespace SymbolNaming.Test;
 
-internal sealed class TestProtectedWordProvider : IProtectedWordProvider
+internal sealed class TestProtectedWordProvider : ProtectedWordProviderBase
 {
-    private readonly HashSet<string> _words;
+    private readonly string[] _words;
 
     public TestProtectedWordProvider(params string[] words)
     {
-        _words = new HashSet<string>(words, StringComparer.OrdinalIgnoreCase);
+        _words = words;
     }
 
-    public bool IsProtected(ReadOnlySpan<char> text)
+    protected override IEnumerable<string> GetProtectedWords()
     {
-        return _words.Contains(text.ToString());
-    }
-
-    public bool TryMatchLongest(ReadOnlySpan<char> text, int start, out int length)
-    {
-        length = 0;
-        return false;
+        return _words;
     }
 }
 
-internal sealed class TestPrefixProvider : IPrefixProvider
+internal sealed class TestPrefixProvider : PrefixProviderBase
 {
-    private readonly HashSet<string> _prefixes;
+    private readonly string[] _prefixes;
 
     public TestPrefixProvider(params string[] prefixes)
     {
-        _prefixes = new HashSet<string>(prefixes, StringComparer.OrdinalIgnoreCase);
+        _prefixes = prefixes;
     }
 
-    public bool IsPrefix(ReadOnlySpan<char> text)
+    protected override IEnumerable<string> GetPrefixes()
     {
-        return _prefixes.Contains(text.ToString());
-    }
-
-    public bool TryMatchLongest(ReadOnlySpan<char> text, int start, out int length)
-    {
-        if ((uint)start >= (uint)text.Length)
-        {
-            length = 0;
-            return false;
-        }
-
-        var slice = text.Slice(start);
-        var maxLength = 0;
-
-        foreach (var prefix in _prefixes)
-        {
-            if (prefix.Length <= maxLength)
-            {
-                continue;
-            }
-
-            if (slice.StartsWith(prefix.AsSpan(), StringComparison.OrdinalIgnoreCase))
-            {
-                maxLength = prefix.Length;
-            }
-        }
-
-        length = maxLength;
-        return maxLength > 0;
+        return _prefixes;
     }
 }
