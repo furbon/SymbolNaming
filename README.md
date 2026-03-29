@@ -7,6 +7,7 @@
 
 - 主用途: シンボル名の分割・判定・変換を一貫して扱う
 - 基本API: まず `SymbolCaseEngine` を使う（`Analyze` / `TryAnalyze` / `Inspect` / `Convert`）
+- 正規化API: `NormalizeForAnalysis` で解析向けに prefix/装飾除去後シンボルを取得
 - 対象: C# で識別子として扱える命名（数字始まり・`-` 含みは対象外）
 - 適用範囲: C#専用ではなく、同様の命名規則を持つ他言語にも適用可能
 - 実装ターゲット: `netstandard2.0`（`.NET Framework 4.6.1+` / `.NET Core 2.0+` / `.NET 5+` で利用可能）
@@ -128,6 +129,29 @@ var converted = engine.Convert(
 ```
 
 `CaseConversionOptions` で、プレフィックスの維持/除去/付与や頭字語ポリシーを制御できます。
+
+### 2.5 解析用正規化（NormalizeForAnalysis）
+
+`NormalizeForAnalysis` は、`Analyze` / `Inspect` と同じ判定系を使って、
+解析用途で扱いやすい正規化結果を返します。
+
+```csharp
+var normalized = engine.NormalizeForAnalysis(
+    "__m_user_name__",
+    new CaseAnalysisOptions
+    {
+        PrefixProvider = new PrefixSetProvider("m"),
+    });
+
+// normalized.NormalizedSymbol == "user_name"
+// normalized.Prefixed == true
+// normalized.Prefix == "m"
+// normalized.LeadingUnderscoreCount == 2
+// normalized.TrailingUnderscoreCount == 2
+```
+
+`LeadingUnderscoreCount` / `TrailingUnderscoreCount` / `Prefixed` / `Prefix` を利用することで、
+利用側は `string.StartsWith` のような生文字列判定に依存せずに分岐できます。
 
 ### 3. 詳細検査（Inspect）
 

@@ -247,6 +247,62 @@ public class SymbolCaseEngineTests
         Assert.Equal(2, inspection.TrailingUnderscoreCount);
     }
 
+    [Fact]
+    public void NormalizeForAnalysisは正規化シンボルと装飾情報を返す()
+    {
+        var engine = CreateEngine(prefixProvider: new TestPrefixProvider("m"));
+
+        var normalized = engine.NormalizeForAnalysis(
+            "__m_user_name__",
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider("m"),
+            });
+
+        Assert.Equal(CaseStyle.LowerSnakeCase, normalized.CaseStyle);
+        Assert.True(normalized.Prefixed);
+        Assert.Equal("m", normalized.Prefix);
+        Assert.Equal("user_name__", normalized.SymbolNameWithoutPrefix);
+        Assert.Equal("user_name", normalized.NormalizedSymbol);
+        Assert.Equal(0, normalized.LeadingUnderscoreCount);
+        Assert.Equal(2, normalized.TrailingUnderscoreCount);
+    }
+
+    [Fact]
+    public void NormalizeForAnalysisSpanは正規化シンボルSpanを返す()
+    {
+        var engine = CreateEngine(prefixProvider: new TestPrefixProvider("m"));
+
+        var normalized = engine.NormalizeForAnalysis(
+            "m_user_name__".AsSpan(),
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider("m"),
+            });
+
+        Assert.Equal(CaseStyle.LowerSnakeCase, normalized.CaseStyle);
+        Assert.True(normalized.Prefixed);
+        Assert.Equal("m", normalized.Prefix.ToString());
+        Assert.Equal("user_name__", normalized.SymbolNameWithoutPrefix.ToString());
+        Assert.Equal("user_name", normalized.NormalizedSymbol.ToString());
+        Assert.Equal(0, normalized.LeadingUnderscoreCount);
+        Assert.Equal(2, normalized.TrailingUnderscoreCount);
+    }
+
+    [Fact]
+    public void NormalizeForAnalysisはAnalyzeと装飾情報が整合する()
+    {
+        var engine = CreateEngine();
+
+        var analyzed = engine.Analyze("__built_in_process__");
+        var normalized = engine.NormalizeForAnalysis("__built_in_process__");
+
+        Assert.Equal(analyzed.Style, normalized.CaseStyle);
+        Assert.Equal(analyzed.Decoration.LeadingUnderscoreCount, normalized.LeadingUnderscoreCount);
+        Assert.Equal(analyzed.Decoration.TrailingUnderscoreCount, normalized.TrailingUnderscoreCount);
+        Assert.Equal("built_in_process", normalized.NormalizedSymbol);
+    }
+
     [Theory]
     [InlineData("EnemyUserData_WALK", "UpperTagOrSegments", "EnemyUserData", "WALK")]
     [InlineData("EnemyUserData_WALK_NORMAL", "UpperTagOrSegments", "EnemyUserData", "WALK_NORMAL")]

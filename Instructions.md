@@ -69,6 +69,7 @@
 ## Analysis 方針
 - `DefaultCaseClassifier` は `TokenList` から `CaseClassificationResult` を返す。
 - 命名スタイル判定に加え、Prefix 判定・装飾情報・複合サフィックス判定を責務として扱う。
+- 正規化専用 API（`NormalizeForAnalysis`）と整合するよう、装飾情報（先頭/末尾アンダースコア）を結果モデルで保持する。
 - 判定対象スタイル:
   - `PascalCase`
   - `CamelCase`
@@ -86,6 +87,7 @@
 
 ## Engine 方針
 - `SymbolCaseEngine` で Tokenize / Analyze / Convert を一貫提供する。
+- `NormalizeForAnalysis` / `NormalizeForAnalysis(ReadOnlySpan<char>)` により、解析向け正規化シンボルと装飾情報を取得可能にする。
 - `Inspect` / `Inspect(ReadOnlySpan<char>)` により、
   - 元シンボル
   - 分割トークン

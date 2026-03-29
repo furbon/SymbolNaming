@@ -313,6 +313,34 @@ public sealed class SymbolCaseEngine : IFreezableComponent
     }
 
     /// <summary>
+    /// 入力文字列を解析用に正規化し、装飾情報を含む結果を返します。
+    /// </summary>
+    public SymbolNormalizationResult NormalizeForAnalysis(string input, CaseAnalysisOptions? options = null)
+    {
+        EnsureFrozen();
+
+        if (input is null)
+        {
+            throw new ArgumentNullException(nameof(input));
+        }
+
+        var tokens = _tokenizer.Tokenize(input);
+        var classification = _classifier.Classify(tokens, options);
+        return new SymbolNormalizationResult(input, tokens, classification);
+    }
+
+    /// <summary>
+    /// 入力 Span を解析用に正規化し、装飾情報を含む結果を返します。
+    /// </summary>
+    public SymbolNormalizationSpan NormalizeForAnalysis(ReadOnlySpan<char> input, CaseAnalysisOptions? options = null)
+    {
+        EnsureFrozen();
+        var tokens = _tokenizer.Tokenize(input);
+        var classification = ClassifySpanInput(input, tokens, options);
+        return new SymbolNormalizationSpan(input, tokens, classification);
+    }
+
+    /// <summary>
     /// 入力文字列を指定スタイルへ変換します。
     /// </summary>
     public CaseConversionResult Convert(string input, CaseStyle targetStyle, CaseConversionOptions? options = null)
