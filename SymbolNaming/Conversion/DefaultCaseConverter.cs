@@ -14,7 +14,7 @@ public sealed class DefaultCaseConverter : ICaseConverter
     /// <remarks>
     /// プレフィックスは <see cref="CaseConversionOptions.PrefixPolicy"/> に従って処理されます。
     /// </remarks>
-    public string Convert(TokenList tokens, CaseStyle targetStyle, CaseConversionOptions? options = null)
+    public CaseConversionResult Convert(TokenList tokens, CaseStyle targetStyle, CaseConversionOptions? options = null)
     {
         if (tokens is null)
         {
@@ -32,6 +32,7 @@ public sealed class DefaultCaseConverter : ICaseConverter
         }
 
         options ??= new CaseConversionOptions();
+        List<CaseConversionWarning>? warnings = null;
 
         var sourceWords = new List<string>(tokens.Count);
         string? existingPrefix = null;
@@ -62,15 +63,36 @@ public sealed class DefaultCaseConverter : ICaseConverter
 
         if (sourceWords.Count == 0)
         {
-            return options.PrefixPolicy == PrefixPolicy.Add
+            warnings = AddWarning(warnings, CaseConversionWarning.NoWordToken);
+
+            if (options.PrefixPolicy == PrefixPolicy.Add && string.IsNullOrEmpty(options.PrefixToAdd))
+            {
+                warnings = AddWarning(warnings, CaseConversionWarning.EmptyPrefixToAdd);
+            }
+
+            var output = options.PrefixPolicy == PrefixPolicy.Add
                 ? options.PrefixToAdd ?? string.Empty
                 : string.Empty;
+
+            return new CaseConversionResult(output, options.PrefixPolicy, options.AcronymPolicy, warnings);
         }
 
         var convertedBody = ConvertWords(sourceWords, targetStyle, options.AcronymPolicy);
         var prefix = ResolvePrefix(options, existingPrefix);
 
-        return prefix + convertedBody;
+        if (options.PrefixPolicy == PrefixPolicy.Add && string.IsNullOrEmpty(options.PrefixToAdd))
+        {
+            warnings = AddWarning(warnings, CaseConversionWarning.EmptyPrefixToAdd);
+        }
+
+        return new CaseConversionResult(prefix + convertedBody, options.PrefixPolicy, options.AcronymPolicy, warnings);
+    }
+
+    private static List<CaseConversionWarning> AddWarning(List<CaseConversionWarning>? warnings, CaseConversionWarning warning)
+    {
+        warnings ??= new List<CaseConversionWarning>(2);
+        warnings.Add(warning);
+        return warnings;
     }
 
     private static string ResolvePrefix(CaseConversionOptions options, string? existingPrefix)

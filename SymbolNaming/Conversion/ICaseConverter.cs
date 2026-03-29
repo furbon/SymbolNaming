@@ -10,5 +10,5 @@ public interface ICaseConverter
     /// <summary>
     /// トークン列を <paramref name="targetStyle"/> に変換します。
     /// </summary>
-    string Convert(TokenList tokens, CaseStyle targetStyle, CaseConversionOptions? options = null);
+    CaseConversionResult Convert(TokenList tokens, CaseStyle targetStyle, CaseConversionOptions? options = null);
 }

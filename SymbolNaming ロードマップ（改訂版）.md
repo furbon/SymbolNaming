@@ -59,27 +59,27 @@
 
 ### ToDo
 
-- [ ] `CaseConversionResult` を追加する
-  - [ ] `Output`
-  - [ ] `AppliedPrefixPolicy`
-  - [ ] `AppliedAcronymPolicy`
-  - [ ] `Warnings`（または同等の診断情報）
-- [ ] `ICaseConverter` の戻り値を `string` から `CaseConversionResult` に変更する
-- [ ] `SymbolCaseEngine.Convert(...)` の戻り値も同様に変更する
-- [ ] 旧 `string` 戻り値 API は残さない
-- [ ] `README.md` に移行ガイドを追加する
+- [x] `CaseConversionResult` を追加する
+  - [x] `Output`
+  - [x] `AppliedPrefixPolicy`
+  - [x] `AppliedAcronymPolicy`
+  - [x] `Warnings`（または同等の診断情報）
+- [x] `ICaseConverter` の戻り値を `string` から `CaseConversionResult` に変更する
+- [x] `SymbolCaseEngine.Convert(...)` の戻り値も同様に変更する
+- [x] 旧 `string` 戻り値 API は残さない
+- [x] `README.md` に移行ガイドを追加する
 
 ### 性能要件（必須）
 
-- [ ] 変換処理の中間割り当てを最小化する
-- [ ] `ReadOnlySpan<char>` 入力経路を第一級 API として維持する
-- [ ] 単発変換スループットで回帰を出さない
+- [x] 変換処理の中間割り当てを最小化する
+- [x] `ReadOnlySpan<char>` 入力経路を第一級 API として維持する
+- [x] 単発変換スループットで回帰を出さない
 
 ### 受け入れ条件
 
-- [ ] 意図したコンパイル非互換を明示できる（Major 更新）
-- [ ] 既存の変換意味論（`PrefixPolicy` / `AcronymPolicy`）は維持される
-- [ ] 移行手順（`result.Output`）が README で明確化されている
+- [x] 意図したコンパイル非互換を明示できる（Major 更新）
+- [x] 既存の変換意味論（`PrefixPolicy` / `AcronymPolicy`）は維持される
+- [x] 移行手順（`result.Output`）が README で明確化されている
 
 ---
 

@@ -118,7 +118,18 @@ public class SymbolCaseEngineTests
 
         var converted = engine.Convert("UserName", CaseStyle.CamelCase);
 
-        Assert.Equal("userName", converted);
+        Assert.Equal("userName", converted.Output);
+        Assert.Equal(PrefixPolicy.Keep, converted.AppliedPrefixPolicy);
+    }
+
+    [Fact]
+    public void ConvertSpanはCase変換結果を返す()
+    {
+        var engine = CreateEngine();
+
+        var converted = engine.Convert("UserName".AsSpan(), CaseStyle.CamelCase);
+
+        Assert.Equal("userName", converted.Output);
     }
 
     [Fact]

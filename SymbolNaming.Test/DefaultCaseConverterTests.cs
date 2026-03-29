@@ -36,7 +36,7 @@ public class DefaultCaseConverterTests
 
         var actual = converter.Convert(tokens, targetStyle);
 
-        Assert.Equal(expected, actual);
+        Assert.Equal(expected, actual.Output);
     }
 
     [Fact]
@@ -54,7 +54,8 @@ public class DefaultCaseConverterTests
                 PrefixPolicy = PrefixPolicy.Keep,
             });
 
-        Assert.Equal("m_user_name", actual);
+        Assert.Equal("m_user_name", actual.Output);
+        Assert.Equal(PrefixPolicy.Keep, actual.AppliedPrefixPolicy);
     }
 
     [Fact]
@@ -72,7 +73,7 @@ public class DefaultCaseConverterTests
                 PrefixPolicy = PrefixPolicy.Remove,
             });
 
-        Assert.Equal("user_name", actual);
+        Assert.Equal("user_name", actual.Output);
     }
 
     [Fact]
@@ -91,7 +92,7 @@ public class DefaultCaseConverterTests
                 PrefixToAdd = "m_",
             });
 
-        Assert.Equal("m_userName", actual);
+        Assert.Equal("m_userName", actual.Output);
     }
 
     [Fact]
@@ -117,7 +118,28 @@ public class DefaultCaseConverterTests
                 AcronymPolicy = AcronymPolicy.Normalize,
             });
 
-        Assert.Equal("XMLHttpRequest", preserved);
-        Assert.Equal("XmlHttpRequest", normalized);
+        Assert.Equal("XMLHttpRequest", preserved.Output);
+        Assert.Equal("XmlHttpRequest", normalized.Output);
+        Assert.Equal(AcronymPolicy.Preserve, preserved.AppliedAcronymPolicy);
+        Assert.Equal(AcronymPolicy.Normalize, normalized.AppliedAcronymPolicy);
+    }
+
+    [Fact]
+    public void PrefixPolicy_AddでPrefixToAddが空なら警告を返す()
+    {
+        var converter = new DefaultCaseConverter();
+        var tokenizer = TestTokenizerFactory.CreateDefault();
+        var tokens = tokenizer.Tokenize("UserName");
+
+        var result = converter.Convert(
+            tokens,
+            CaseStyle.CamelCase,
+            new CaseConversionOptions
+            {
+                PrefixPolicy = PrefixPolicy.Add,
+                PrefixToAdd = string.Empty,
+            });
+
+        Assert.Contains(CaseConversionWarning.EmptyPrefixToAdd, result.Warnings);
     }
 }

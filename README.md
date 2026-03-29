@@ -114,7 +114,7 @@ var ok = engine.TryAnalyze("m_UserName", out var unknown);
 
 ```csharp
 var camel = engine.Convert("UserName", CaseStyle.CamelCase);
-// "userName"
+// camel.Output == "userName"
 
 var converted = engine.Convert(
     "m_UserName",

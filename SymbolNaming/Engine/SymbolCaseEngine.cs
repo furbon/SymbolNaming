@@ -180,7 +180,7 @@ public sealed class SymbolCaseEngine : IFreezableComponent
     /// <summary>
     /// 入力文字列を指定スタイルへ変換します。
     /// </summary>
-    public string Convert(string input, CaseStyle targetStyle, CaseConversionOptions? options = null)
+    public CaseConversionResult Convert(string input, CaseStyle targetStyle, CaseConversionOptions? options = null)
     {
         EnsureFrozen();
         var tokens = _tokenizer.Tokenize(input);
@@ -188,9 +188,20 @@ public sealed class SymbolCaseEngine : IFreezableComponent
     }
 
     /// <summary>
+    /// 入力 Span を指定スタイルへ変換します。
+    /// </summary>
+    public CaseConversionResult Convert(ReadOnlySpan<char> input, CaseStyle targetStyle, CaseConversionOptions? options = null)
+    {
+        EnsureFrozen();
+        var sourceText = input.ToString();
+        var tokens = _tokenizer.Tokenize(sourceText);
+        return _converter.Convert(tokens, targetStyle, options);
+    }
+
+    /// <summary>
     /// 指定トークン列を指定スタイルへ変換します。
     /// </summary>
-    public string Convert(TokenList tokens, CaseStyle targetStyle, CaseConversionOptions? options = null)
+    public CaseConversionResult Convert(TokenList tokens, CaseStyle targetStyle, CaseConversionOptions? options = null)
     {
         EnsureFrozen();
         return _converter.Convert(tokens, targetStyle, options);
