@@ -3,18 +3,118 @@
 `SymbolNaming` は、シンボル名（変数名・プロパティ名・フィールド名など）を対象に、
 **トークン分割 / 命名スタイル判定 / スタイル変換 / 補助的な検査** を行う .NET ライブラリです。
 
-## TL;DR
+この README は、**最小サンプルで使い方を掴む → 提供機能を把握する → 詳細を確認する** 流れで読める構成にしています。
 
-- 主用途: シンボル名の分割・判定・変換を一貫して扱う
-- 基本API: まず `SymbolCaseEngine` を使う（`Analyze` / `TryAnalyze` / `Inspect` / `Convert`）
-- 正規化API: `NormalizeForAnalysis` で解析向けに prefix/装飾除去後シンボルを取得
-- 対象: C# で識別子として扱える命名（数字始まり・`-` 含みは対象外）
-- 適用範囲: C#専用ではなく、同様の命名規則を持つ他言語にも適用可能
-- 実装ターゲット: `netstandard2.0`（`.NET Framework 4.6.1+` / `.NET Core 2.0+` / `.NET 5+` で利用可能）
-- 性能: `ReadOnlySpan<char>` オーバーロードを提供し、割り当てを抑えた利用が可能
-- 並列利用: 共有インスタンスの読み取り中心利用を想定
-- 拡張利用: `RuleBasedSymbolTokenizer` を直接構成する場合は `Freeze()` で設定確定後に使用
-- 設定の目安: `PrefixProvider` には `m` / `s` / `k` / `str` のような接頭辞、`ProtectedWordProvider` には `iOS` のような保護語を登録
+## 読み方ガイド
+
+- すぐ使いたい: [`クイックスタート（Engine）`](#クイックスタートengine) と [`最小サンプル`](#最小サンプル)
+- 何ができるか俯瞰したい: [`提供機能一覧`](#提供機能一覧)
+- 実運用向けに深掘りしたい: [`実践ガイド`](#実践ガイド) と [`オプションと拡張ポイント`](#オプションと拡張ポイント)
+
+## クイックスタート（Engine）
+
+`SymbolCaseEngine` は、実運用で利用しやすい統合 API です。
+
+```csharp
+using SymbolNaming;
+using SymbolNaming.Analysis;
+using SymbolNaming.Conversion;
+using SymbolNaming.Engine;
+using SymbolNaming.Tokenization;
+
+var engine = new SymbolCaseEngine(
+    SymbolTokenizerFactory.CreateDefault(),
+    new DefaultCaseClassifier(),
+    new DefaultCaseConverter());
+
+var result = engine.Analyze("UserName");
+// result.Style == CaseStyle.PascalCase
+// result.Prefixed == false
+```
+
+---
+
+## 最小サンプル
+
+### 1. スタイル判定（Analyze）
+
+```csharp
+var analyzed = engine.Analyze("UserName");
+// analyzed.Style == CaseStyle.PascalCase
+```
+
+`Analyze` を使うと、入力シンボルがどの命名スタイルかを判定できます。
+
+### 2. スタイル変換（Convert）
+
+PascalCase の `"UserName"` を、SCREAMING_SNAKE_CASE の `"USER_NAME"` に変換するコードは以下の通りです。
+
+```csharp
+var converted = engine.Convert("UserName", CaseStyle.ScreamingSnakeCase);
+// converted.Output == "USER_NAME"
+```
+
+### 3. 解析用の正規化（NormalizeForAnalysis）
+
+```csharp
+using SymbolNaming.Dictionaries;
+
+var normalized = engine.NormalizeForAnalysis(
+    "__m_user_name__",
+    new CaseAnalysisOptions
+    {
+        PrefixProvider = new PrefixSetProvider("m"),
+    });
+
+// normalized.NormalizedSymbol == "user_name"
+// normalized.Prefixed == true
+// normalized.Prefix == "m"
+```
+
+`NormalizeForAnalysis` を使うと、prefix や装飾を考慮した「解析しやすい形」をすぐ取得できます。
+
+### 4. 詳細検査（Inspect）
+
+```csharp
+using SymbolNaming.Dictionaries;
+
+var inspection = engine.Inspect(
+    "m_UserName",
+    new CaseAnalysisOptions
+    {
+        PrefixProvider = new PrefixSetProvider("m"),
+    });
+
+// inspection.CaseStyle == CaseStyle.PascalCase
+// inspection.Prefixed == true
+// inspection.SymbolNameWithoutPrefix == "UserName"
+```
+
+`Inspect` では、スタイルだけでなく prefix 判定や prefix 除去後シンボルまで一度に取得できます。
+
+---
+
+## 提供機能一覧
+
+### 基本機能
+
+- `Analyze` / `TryAnalyze`: 命名スタイル判定（`Unknown` を含む曖昧ケース対応）
+- `Convert`: `PascalCase` / `camelCase` / `snake_case` / `SCREAMING_SNAKE_CASE` など相互変換
+- `Inspect`: 判定結果に加えて、Prefix 判定・装飾情報・警告情報を取得
+- `NormalizeForAnalysis`: prefix / 装飾を扱いやすい形に正規化
+
+### 高頻度実行向け
+
+- `ReadOnlySpan<char>` / `ReadOnlyMemory<char>` オーバーロードを提供
+- `TokenizeMany` / `AnalyzeMany` / `InspectMany` / `TryAnalyzeMany` / `ConvertMany` によるバルク処理
+- 共有インスタンスを読み取り中心で使いやすい設計（並列実行を想定）
+
+### 拡張とカスタマイズ
+
+- `IPrefixProvider` / `IProtectedWordProvider` による辞書差し替え
+- `IInspectionRule` による警告ルール拡張
+- `CompositeSuffixPatternMatcher` による可変サフィックス判定
+- `RuleBasedSymbolTokenizer` の直接構成（`Freeze()` 後に利用）
 
 本ライブラリは、処理を以下の責務ごとに分離して設計されています。
 
@@ -65,30 +165,9 @@
 
 ---
 
-## クイックスタート（Engine）
+## 実践ガイド
 
-`SymbolCaseEngine` は、実運用で利用しやすい統合 API です。
-
-```csharp
-using SymbolNaming;
-using SymbolNaming.Analysis;
-using SymbolNaming.Conversion;
-using SymbolNaming.Engine;
-using SymbolNaming.Tokenization;
-
-var engine = new SymbolCaseEngine(
-    SymbolTokenizerFactory.CreateDefault(),
-    new DefaultCaseClassifier(),
-    new DefaultCaseConverter());
-
-var result = engine.Analyze("UserName");
-// result.Style == CaseStyle.PascalCase
-// result.Prefixed == false
-```
-
----
-
-## 具体的な使い方
+最小サンプルで触れた API を、実務寄りの設定・入力値で段階的に確認します。
 
 ### 1. スタイル判定（Analyze / TryAnalyze）
 
@@ -118,12 +197,12 @@ var converted = engine.Convert(
         PrefixPolicy = PrefixPolicy.Remove,
         AcronymPolicy = AcronymPolicy.Preserve,
     });
-// "USER_NAME"
+// converted.Output == "USER_NAME"
 ```
 
 `CaseConversionOptions` で、プレフィックスの維持/除去/付与や頭字語ポリシーを制御できます。
 
-### 2.5 解析用正規化（NormalizeForAnalysis）
+### 3. 解析用正規化（NormalizeForAnalysis）
 
 `NormalizeForAnalysis` は、`Analyze` / `Inspect` と同じ判定系を使って、
 解析用途で扱いやすい正規化結果を返します。
@@ -146,7 +225,7 @@ var normalized = engine.NormalizeForAnalysis(
 `LeadingUnderscoreCount` / `TrailingUnderscoreCount` / `Prefixed` / `Prefix` を利用することで、
 利用側は `string.StartsWith` のような生文字列判定に依存せずに分岐できます。
 
-### 3. 詳細検査（Inspect）
+### 4. 詳細検査（Inspect）
 
 `Inspect` は、分類結果に加えて実用的な補助情報を返します。
 
@@ -195,23 +274,10 @@ var engine = new SymbolCaseEngine(
 
 ルールは登録順に実行されるため、同一入力に対して `Warnings` の順序は決定的です。
 
-### 4. Span ベース API
+### 5. Span / Memory ベース API
 
-割り当てを抑えたい場面では `ReadOnlySpan<char>` ベース API を使えます。
-
-```csharp
-ReadOnlySpan<char> input = "s_UserName".AsSpan();
-var inspection = engine.Inspect(input, new CaseAnalysisOptions
-{
-    PrefixProvider = new PrefixSetProvider("s_"),
-});
-
-// inspection.Prefix は ReadOnlySpan<char>
-// inspection.SymbolNameWithoutPrefix も ReadOnlySpan<char>
-```
-
-加えて、Roslyn アナライザ実装のような高頻度かつ並列実行のシナリオでも利用できるよう、
-`Analyze` / `TryAnalyze` / `Inspect` には `ReadOnlySpan<char>` を受け取るオーバーロードを用意しています。
+高頻度実行で割り当てを抑えたい場合は、`ReadOnlySpan<char>` / `ReadOnlyMemory<char>` オーバーロードを利用します。
+`Analyze` / `TryAnalyze` / `Inspect` は `ReadOnlySpan<char>` を直接受け取れます。
 
 ```csharp
 ReadOnlySpan<char> symbol = "m_UserName".AsSpan();
@@ -225,6 +291,26 @@ var ok = engine.TryAnalyze(symbol, out var result, new CaseAnalysisOptions
 {
     PrefixProvider = new PrefixSetProvider("m"),
 });
+
+var inspection = engine.Inspect(symbol, new CaseAnalysisOptions
+{
+    PrefixProvider = new PrefixSetProvider("m"),
+});
+
+// inspection.Prefix は ReadOnlySpan<char>
+// inspection.SymbolNameWithoutPrefix も ReadOnlySpan<char>
+```
+
+`ConvertMany` などのバルク API には `ReadOnlyMemory<char>` 入力も利用できます。
+
+```csharp
+var memoryInputs = new[]
+{
+    "UserName".AsMemory(),
+    "HTTPServer".AsMemory(),
+};
+
+var converted = engine.ConvertMany(memoryInputs, CaseStyle.CamelCase);
 ```
 
 - CPU・メモリ効率を重視し、不要な割り当てを抑える設計
@@ -233,7 +319,7 @@ var ok = engine.TryAnalyze(symbol, out var result, new CaseAnalysisOptions
 なお、本ライブラリはアナライザ専用ライブラリではありません。
 通常のアプリケーションコードやツール実装でも同じ API を利用できます。
 
-### 5. バルク処理 API（TokenizeMany / AnalyzeMany / InspectMany / TryAnalyzeMany / ConvertMany）
+### 6. バルク処理 API（TokenizeMany / AnalyzeMany / InspectMany / TryAnalyzeMany / ConvertMany）
 
 高頻度に大量シンボルを処理する場合は、`*Many` API を使うことで呼び出し側の反復オーバーヘッドを減らせます。
 
@@ -273,17 +359,7 @@ var tryAnalyzeMany = engine.TryAnalyzeMany(symbols);
 var tokenizeMany = engine.TokenizeMany(symbols);
 ```
 
-`ReadOnlyMemory<char>` 系オーバーロードも提供しています。
-
-```csharp
-var memoryInputs = new[]
-{
-    "UserName".AsMemory(),
-    "HTTPServer".AsMemory(),
-};
-
-var converted = engine.ConvertMany(memoryInputs, CaseStyle.CamelCase);
-```
+`ReadOnlyMemory<char>` 入力例は、直前の `5. Span / Memory ベース API` を参照してください。
 
 失敗時ポリシー:
 
@@ -297,7 +373,7 @@ var converted = engine.ConvertMany(memoryInputs, CaseStyle.CamelCase);
 - `TryAnalyzeMany` は `BulkTryAnalyzeResult.Success` で判定可否を返却
 - 共有インスタンスの並列利用時も、単一呼び出し内の結果順は入力順で決定的
 
-### 6. トークナイザーを直接構成する場合（拡張利用）
+### 7. トークナイザーを直接構成する場合（拡張利用）
 
 通常の利用では、`SymbolCaseEngine` だけで完結します。
 
