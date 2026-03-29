@@ -1,7 +1,7 @@
 using SymbolNaming.Analysis;
 using SymbolNaming.Tokens;
 
-namespace SymbolNaming.Test;
+namespace SymbolNaming.Tests;
 
 public class DefaultCaseClassifierTests
 {

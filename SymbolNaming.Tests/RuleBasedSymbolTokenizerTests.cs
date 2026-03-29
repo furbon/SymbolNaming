@@ -3,7 +3,7 @@ using SymbolNaming.Tokenization.SplitRules;
 using SymbolNaming.Dictionaries;
 using SymbolNaming.Tokens;
 
-namespace SymbolNaming.Test;
+namespace SymbolNaming.Tests;
 
 public class RuleBasedSymbolTokenizerTests
 {

@@ -3,7 +3,7 @@ using SymbolNaming.Tokenization;
 using SymbolNaming.Tokenization.SplitRules;
 using SymbolNaming.Tokens;
 
-namespace SymbolNaming.Test;
+namespace SymbolNaming.Tests;
 
 public class ProviderUtilityTests
 {

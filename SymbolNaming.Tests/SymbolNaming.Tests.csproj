@@ -6,8 +6,8 @@
 		<LangVersion>12.0</LangVersion>
 		<SuppressTfmSupportBuildErrors>true</SuppressTfmSupportBuildErrors>
 		<IsPackable>false</IsPackable>
-		<AssemblyName>SymbolNaming.Test</AssemblyName>
-		<RootNamespace>SymbolNaming.Test</RootNamespace>
+      <AssemblyName>SymbolNaming.Tests</AssemblyName>
+		<RootNamespace>SymbolNaming.Tests</RootNamespace>
 	</PropertyGroup>
 
 	<ItemGroup>

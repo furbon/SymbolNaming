@@ -1,7 +1,7 @@
 using SymbolNaming.Dictionaries;
 using SymbolNaming.Tokenization;
 
-namespace SymbolNaming.Test;
+namespace SymbolNaming.Tests;
 
 internal static class TestTokenizerFactory
 {

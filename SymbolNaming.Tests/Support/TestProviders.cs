@@ -1,6 +1,6 @@
 using SymbolNaming.Dictionaries;
 
-namespace SymbolNaming.Test;
+namespace SymbolNaming.Tests;
 
 internal sealed class TestProtectedWordProvider : ProtectedWordProviderBase
 {

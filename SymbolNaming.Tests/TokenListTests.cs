@@ -1,6 +1,6 @@
 using SymbolNaming.Tokens;
 
-namespace SymbolNaming.Test;
+namespace SymbolNaming.Tests;
 
 public class TokenListTests
 {

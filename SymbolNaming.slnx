@@ -1,8 +1,5 @@
 <Solution>
-  <Folder Name="/Solution Items/">
-    <File Path="SymbolNaming ロードマップ（改訂版）.md" />
-  </Folder>
   <Project Path="SymbolNaming.Benchmarks/SymbolNaming.Benchmarks.csproj" />
-  <Project Path="SymbolNaming.Test/SymbolNaming.Test.csproj" />
+  <Project Path="SymbolNaming.Tests/SymbolNaming.Tests.csproj" />
   <Project Path="SymbolNaming/SymbolNaming.csproj" />
 </Solution>
