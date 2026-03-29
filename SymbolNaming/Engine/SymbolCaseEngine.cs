@@ -102,6 +102,16 @@ public sealed class SymbolCaseEngine : IFreezableComponent
     }
 
     /// <summary>
+    /// 入力 Span の命名スタイルを解析します。
+    /// </summary>
+    public CaseClassificationResult Analyze(ReadOnlySpan<char> input, CaseAnalysisOptions? options = null)
+    {
+        EnsureFrozen();
+        var tokens = _tokenizer.Tokenize(input);
+        return ClassifySpanInput(input, tokens, options);
+    }
+
+    /// <summary>
     /// 入力文字列の命名スタイル解析を試行します。
     /// </summary>
     public bool TryAnalyze(string input, out CaseClassificationResult result, CaseAnalysisOptions? options = null)
@@ -109,6 +119,16 @@ public sealed class SymbolCaseEngine : IFreezableComponent
         EnsureFrozen();
         var tokens = _tokenizer.Tokenize(input);
         return _classifier.TryClassify(tokens, out result, options);
+    }
+
+    /// <summary>
+    /// 入力 Span の命名スタイル解析を試行します。
+    /// </summary>
+    public bool TryAnalyze(ReadOnlySpan<char> input, out CaseClassificationResult result, CaseAnalysisOptions? options = null)
+    {
+        EnsureFrozen();
+        var tokens = _tokenizer.Tokenize(input);
+        return TryClassifySpanInput(input, tokens, out result, options);
     }
 
     /// <summary>
@@ -186,6 +206,18 @@ public sealed class SymbolCaseEngine : IFreezableComponent
         var sourceText = input.ToString();
         var sourceTokens = _tokenizer.Tokenize(sourceText);
         return _classifier.Classify(sourceTokens, options);
+    }
+
+    private bool TryClassifySpanInput(ReadOnlySpan<char> input, TokenList tokens, out CaseClassificationResult result, CaseAnalysisOptions? options)
+    {
+        if (_defaultClassifier is not null)
+        {
+            return _defaultClassifier.TryClassify(input, tokens, out result, options);
+        }
+
+        var sourceText = input.ToString();
+        var sourceTokens = _tokenizer.Tokenize(sourceText);
+        return _classifier.TryClassify(sourceTokens, out result, options);
     }
 
     private void EnsureFrozen()

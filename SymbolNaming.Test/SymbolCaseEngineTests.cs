@@ -47,6 +47,34 @@ public class SymbolCaseEngineTests
         Assert.False(result.Prefixed);
     }
 
+    [Fact]
+    public void AnalyzeSpanはSpan入力でCase分類できる()
+    {
+        var engine = CreateEngine(prefixProvider: new TestPrefixProvider("s_"));
+
+        var result = engine.Analyze(
+            "s_UserName".AsSpan(),
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider("s_"),
+            });
+
+        Assert.Equal(CaseStyle.PascalCase, result.Style);
+        Assert.True(result.Prefixed);
+    }
+
+    [Fact]
+    public void TryAnalyzeSpanは判定不能ケースでfalseとUnknownを返す()
+    {
+        var engine = CreateEngine();
+
+        var success = engine.TryAnalyze("m_UserName".AsSpan(), out var result);
+
+        Assert.False(success);
+        Assert.Equal(CaseStyle.Unknown, result.Style);
+        Assert.False(result.Prefixed);
+    }
+
     [Theory]
     [InlineData("_userName", CaseStyle.CamelCase)]
     [InlineData("__built_in_process", CaseStyle.LowerSnakeCase)]

@@ -14,8 +14,8 @@
 > Copilot 向けの応答・実装時ルールは `.github/copilot-instructions.md` を参照してください（本書から分離）。
 
 ## 対象構成（現行）
-- ライブラリ: `SymbolNaming/SymbolNaming.csproj`（`netstandard2.1`）
-- テスト: `SymbolNaming.Test/SymbolNaming.Test.csproj`（`net10.0` + xUnit）
+- ライブラリ: `SymbolNaming/SymbolNaming.csproj`（`.NET Standard 2.0` / `netstandard2.0`）
+- テスト: `SymbolNaming.Test/SymbolNaming.Test.csproj`（`.NET 10` / `net10.0` + xUnit）
 - 主要名前空間:
   - `SymbolNaming.Tokenization`
   - `SymbolNaming.Analysis`
@@ -68,6 +68,7 @@
 
 ## Analysis 方針
 - `DefaultCaseClassifier` は `TokenList` から `CaseClassificationResult` を返す。
+- 命名スタイル判定に加え、Prefix 判定・装飾情報・複合サフィックス判定を責務として扱う。
 - 判定対象スタイル:
   - `PascalCase`
   - `CamelCase`
@@ -104,3 +105,7 @@
 ## 運用メモ
 - 会話由来の方針は、逐語転記ではなく仕様・設計意図として正規化して記述する。
 - 未確定事項は「未確定」と明示し、確定仕様と混在させない。
+
+## ドキュメント更新運用ルール
+- 機能追加 PR では、実装変更と同一 PR 内で `README.md` と `Instructions.md` の両方を更新する。
+- 仕様変更を伴う場合は、API 差分・利用者影響（移行要否）を `README.md` または仕様書に明記する。

@@ -30,6 +30,17 @@ public sealed class TokenList : IReadOnlyList<Token>
         _source = source;
     }
 
+    internal TokenList(List<Token> tokens, string? source, bool takeOwnership)
+    {
+        if (tokens is null)
+        {
+            throw new ArgumentNullException(nameof(tokens));
+        }
+
+        _tokens = takeOwnership ? tokens : tokens.ToList();
+        _source = source;
+    }
+
     /// <summary>
     /// source 文字列を保持しているかを示します。
     /// </summary>

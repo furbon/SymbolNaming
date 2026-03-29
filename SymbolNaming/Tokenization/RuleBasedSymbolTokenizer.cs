@@ -184,7 +184,7 @@ public sealed class RuleBasedSymbolTokenizer : ISymbolTokenizer, IFreezableCompo
 
         MarkSpecialCategories(tokens, input);
 
-        return new TokenList(tokens, sourceText);
+        return new TokenList(tokens, sourceText, takeOwnership: true);
     }
 
     private static void EmitToken(List<Token> tokens, ReadOnlySpan<char> input, int start, int length, TokenCategory category)
