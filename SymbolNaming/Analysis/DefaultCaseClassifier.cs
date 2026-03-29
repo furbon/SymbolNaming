@@ -372,9 +372,14 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
             return CaseStyle.Unknown;
         }
 
-        if (hasUnderscoreSeparator || targetWordCount > 1 || matches.Count == 1)
+        if (matches.Count == 1)
         {
             return SelectSingleMatch(matches);
+        }
+
+        if (hasUnderscoreSeparator || targetWordCount > 1)
+        {
+            return CaseStyle.Unknown;
         }
 
         switch (options.AmbiguousSingleTokenPolicy)
@@ -531,7 +536,7 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
                 continue;
             }
 
-            if (!ContainsLetterWithCase(tokens.GetSpan(token), isUpper: false))
+            if (!IsSnakeWordWithCaseOrDigits(tokens.GetSpan(token), isUpper: false))
             {
                 return false;
             }
@@ -565,7 +570,7 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
                 continue;
             }
 
-            if (!ContainsLetterWithCase(source.Slice(token.Start, token.Length), isUpper: false))
+            if (!IsSnakeWordWithCaseOrDigits(source.Slice(token.Start, token.Length), isUpper: false))
             {
                 return false;
             }
@@ -599,7 +604,7 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
                 continue;
             }
 
-            if (!ContainsLetterWithCase(tokens.GetSpan(token), isUpper: true))
+            if (!IsSnakeWordWithCaseOrDigits(tokens.GetSpan(token), isUpper: true))
             {
                 return false;
             }
@@ -633,7 +638,7 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
                 continue;
             }
 
-            if (!ContainsLetterWithCase(source.Slice(token.Start, token.Length), isUpper: true))
+            if (!IsSnakeWordWithCaseOrDigits(source.Slice(token.Start, token.Length), isUpper: true))
             {
                 return false;
             }
@@ -667,7 +672,7 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
                 continue;
             }
 
-            if (!IsPascalWord(tokens.GetSpan(token)))
+            if (!IsPascalWordOrDigits(tokens.GetSpan(token)))
             {
                 return false;
             }
@@ -701,7 +706,7 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
                 continue;
             }
 
-            if (!IsPascalWord(source.Slice(token.Start, token.Length)))
+            if (!IsPascalWordOrDigits(source.Slice(token.Start, token.Length)))
             {
                 return false;
             }
@@ -749,6 +754,16 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
         return hasLetter;
     }
 
+    private static bool IsPascalWordOrDigits(ReadOnlySpan<char> text)
+    {
+        if (IsPascalWord(text))
+        {
+            return true;
+        }
+
+        return ContainsDigitOnly(text);
+    }
+
     private static bool ContainsLetterWithCase(ReadOnlySpan<char> text, bool isUpper)
     {
         var hasLetter = false;
@@ -772,6 +787,34 @@ public sealed class DefaultCaseClassifier : ICaseClassifier, ICaseStyleMatcher
         }
 
         return hasLetter;
+    }
+
+    private static bool IsSnakeWordWithCaseOrDigits(ReadOnlySpan<char> text, bool isUpper)
+    {
+        if (ContainsLetterWithCase(text, isUpper))
+        {
+            return true;
+        }
+
+        return ContainsDigitOnly(text);
+    }
+
+    private static bool ContainsDigitOnly(ReadOnlySpan<char> text)
+    {
+        if (text.IsEmpty)
+        {
+            return false;
+        }
+
+        foreach (var c in text)
+        {
+            if (!char.IsDigit(c))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static bool IsPrefixToken(Token token, TokenList tokens, CaseAnalysisOptions options)

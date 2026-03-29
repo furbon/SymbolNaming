@@ -25,7 +25,7 @@ public sealed class CaseAnalysisOptions
     /// <summary>
     /// セパレーターなし単一語で複数スタイルが成立する場合の解決ポリシーです。
     /// </summary>
-    public AmbiguousSingleTokenPolicy AmbiguousSingleTokenPolicy { get; set; } = AmbiguousSingleTokenPolicy.PreferPascalOrCamel;
+    public AmbiguousSingleTokenPolicy AmbiguousSingleTokenPolicy { get; set; } = AmbiguousSingleTokenPolicy.ReturnUnknown;
 
     /// <summary>
     /// <see cref="AmbiguousSingleTokenPolicy.UseCustomResolver"/> 指定時に使用するカスタム解決関数です。

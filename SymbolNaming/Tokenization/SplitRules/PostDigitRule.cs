@@ -15,7 +15,7 @@ public sealed class PostDigitRule : ISplitRule
             return SplitResult.NoSplit;
         }
 
-        if (char.IsDigit(span[index - 1]) && !char.IsDigit(span[index]))
+        if (char.IsDigit(span[index - 1]) && !char.IsDigit(span[index]) && span[index] != '_')
         {
             return SplitResult.WordSplit();
         }

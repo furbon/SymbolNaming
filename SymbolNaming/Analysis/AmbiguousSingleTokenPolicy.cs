@@ -6,7 +6,7 @@ namespace SymbolNaming.Analysis;
 public enum AmbiguousSingleTokenPolicy
 {
     /// <summary>
-    /// 従来互換として、先頭文字を優先して <c>PascalCase</c> / <c>camelCase</c> を選択します。
+    /// 先頭文字を優先して <c>PascalCase</c> / <c>camelCase</c> を選択します。
     /// </summary>
     PreferPascalOrCamel,
 

@@ -133,11 +133,11 @@ public class DefaultCaseClassifierTests
     }
 
     [Theory]
-    [InlineData("s", "s_Player", CaseStyle.PascalCase)]
-    [InlineData("s_", "s_Player", CaseStyle.PascalCase)]
-    [InlineData("s", "s_player", CaseStyle.CamelCase)]
-    [InlineData("s_", "s_player", CaseStyle.CamelCase)]
-    public void Prefix接続後が単一トークンの場合_既定方針ではPascalCamel優先で判定できる(string prefix, string input, CaseStyle expected)
+    [InlineData("s", "s_Player")]
+    [InlineData("s_", "s_Player")]
+    [InlineData("s", "s_player")]
+    [InlineData("s_", "s_player")]
+    public void Prefix接続後が単一トークンの場合_既定方針ではUnknownを返す(string prefix, string input)
     {
         var tokenizer = TestTokenizerFactory.CreateDefault(prefixProvider: new TestPrefixProvider(prefix));
         var classifier = new DefaultCaseClassifier();
@@ -151,9 +151,9 @@ public class DefaultCaseClassifierTests
                 PrefixProvider = new TestPrefixProvider(prefix),
             });
 
-        Assert.True(success);
-        Assert.Equal(expected, result.Style);
-        Assert.True(result.Prefixed);
+        Assert.False(success);
+        Assert.Equal(CaseStyle.Unknown, result.Style);
+        Assert.False(result.Prefixed);
     }
 
     [Theory]
@@ -380,6 +380,56 @@ public class DefaultCaseClassifierTests
         Assert.True(success);
         Assert.Equal(expectedStyle, result.Style);
         Assert.Equal(expectedPrefixed, result.Prefixed);
+    }
+
+    [Theory]
+    [InlineData("R3_STICK", new[] { TokenCategory.Word, TokenCategory.Separator, TokenCategory.Word })]
+    [InlineData("R_3_STICK", new[] { TokenCategory.Word, TokenCategory.Separator, TokenCategory.Word, TokenCategory.Separator, TokenCategory.Word })]
+    public void 数字を含むScreamingSnakeCaseを判定できる(string input, TokenCategory[] expectedCategories)
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault();
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize(input);
+
+        Assert.Equal(expectedCategories, tokens.Select(t => t.Category).ToArray());
+
+        var success = classifier.TryClassify(tokens, out var result);
+
+        Assert.True(success);
+        Assert.Equal(CaseStyle.ScreamingSnakeCase, result.Style);
+        Assert.False(result.Prefixed);
+    }
+
+    [Fact]
+    public void R_LはUpperSnakeCaseとScreamingSnakeCaseの両方に適合する()
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault();
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize("R_L");
+
+        var matches = classifier.GetMatches(tokens);
+
+        Assert.False(matches.PascalCase);
+        Assert.False(matches.CamelCase);
+        Assert.True(matches.UpperSnakeCase);
+        Assert.False(matches.LowerSnakeCase);
+        Assert.True(matches.ScreamingSnakeCase);
+    }
+
+    [Theory]
+    [InlineData("My_3_Value", CaseStyle.UpperSnakeCase)]
+    [InlineData("my_3_value", CaseStyle.LowerSnakeCase)]
+    public void 数字のみトークンを含むSnakeCaseを判定できる(string input, CaseStyle expected)
+    {
+        var tokenizer = TestTokenizerFactory.CreateDefault();
+        var classifier = new DefaultCaseClassifier();
+        var tokens = tokenizer.Tokenize(input);
+
+        var success = classifier.TryClassify(tokens, out var result);
+
+        Assert.True(success);
+        Assert.Equal(expected, result.Style);
+        Assert.False(result.Prefixed);
     }
 
     [Fact]

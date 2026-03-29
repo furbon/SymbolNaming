@@ -311,6 +311,8 @@ public class RuleBasedSymbolTokenizerTests
     [Theory]
     [InlineData("MyClass_3Table", new[] { "My", "Class", "_", "3", "Table" }, new[] { TokenCategory.Word, TokenCategory.Word, TokenCategory.Separator, TokenCategory.Word, TokenCategory.Word })]
     [InlineData("XMLCode_2DModel", new[] { "XML", "Code", "_", "2", "D", "Model" }, new[] { TokenCategory.Word, TokenCategory.Word, TokenCategory.Separator, TokenCategory.Word, TokenCategory.Word, TokenCategory.Word })]
+    [InlineData("R3_STICK", new[] { "R3", "_", "STICK" }, new[] { TokenCategory.Word, TokenCategory.Separator, TokenCategory.Word })]
+    [InlineData("R_3_STICK", new[] { "R", "_", "3", "_", "STICK" }, new[] { TokenCategory.Word, TokenCategory.Separator, TokenCategory.Word, TokenCategory.Separator, TokenCategory.Word })]
     [InlineData("@Vector3Table_Test", new[] { "@", "Vector3", "Table", "_", "Test" }, new[] { TokenCategory.Separator, TokenCategory.Word, TokenCategory.Word, TokenCategory.Separator, TokenCategory.Word })]
     [InlineData("m_testValue", new[] { "m", "_", "test", "Value" }, new[] { TokenCategory.Word, TokenCategory.Separator, TokenCategory.Word, TokenCategory.Word })]
     [InlineData("TryParseXMLComment", new[] { "Try", "Parse", "XML", "Comment" }, new[] { TokenCategory.Word, TokenCategory.Word, TokenCategory.Word, TokenCategory.Word })]
