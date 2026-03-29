@@ -27,6 +27,8 @@ public sealed class SymbolCaseEngine : IFreezableComponent
         _tokenizer = tokenizer ?? throw new ArgumentNullException(nameof(tokenizer));
         _classifier = classifier ?? throw new ArgumentNullException(nameof(classifier));
         _converter = converter ?? throw new ArgumentNullException(nameof(converter));
+
+        Freeze();
     }
 
     /// <summary>

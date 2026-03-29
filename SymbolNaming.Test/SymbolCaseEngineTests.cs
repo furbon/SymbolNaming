@@ -8,11 +8,15 @@ namespace SymbolNaming.Test;
 public class SymbolCaseEngineTests
 {
     [Fact]
-    public void Freeze前にAnalyzeするとInvalidOperationExceptionを送出する()
+    public void Engine生成時に自動Freezeされる()
     {
-        var engine = CreateEngine(freeze: false);
+        var engine = CreateEngine();
 
-        Assert.Throws<InvalidOperationException>(() => engine.Analyze("UserName"));
+        Assert.True(engine.IsFrozen);
+
+        var result = engine.Analyze("UserName");
+
+        Assert.Equal(CaseStyle.PascalCase, result.Style);
     }
 
     [Fact]
@@ -263,19 +267,12 @@ public class SymbolCaseEngineTests
         Assert.Null(inspection.CompositePatternSuffix);
     }
 
-    private static SymbolCaseEngine CreateEngine(TestProtectedWordProvider? protectedWordProvider = null, TestPrefixProvider? prefixProvider = null, bool freeze = true)
+    private static SymbolCaseEngine CreateEngine(TestProtectedWordProvider? protectedWordProvider = null, TestPrefixProvider? prefixProvider = null)
     {
-        var engine = new SymbolCaseEngine(
+        return new SymbolCaseEngine(
             TestTokenizerFactory.CreateDefault(protectedWordProvider, prefixProvider),
             new DefaultCaseClassifier(),
             new DefaultCaseConverter());
-
-        if (freeze)
-        {
-            engine.Freeze();
-        }
-
-        return engine;
     }
 
     private static ICompositeSymbolPatternMatcher CreateGameCompositeMatcher()
