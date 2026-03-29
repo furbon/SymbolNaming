@@ -3,17 +3,17 @@
 `SymbolNaming` は、シンボル名（変数名・プロパティ名・フィールド名など）を対象に、
 **トークン分割 / 命名スタイル判定 / スタイル変換 / 補助的な検査** を行う .NET ライブラリです。
 
-この README は、**最小サンプルで使い方を掴む → 提供機能を把握する → 詳細を確認する** 流れで読める構成にしています。
-
 ## 読み方ガイド
 
-- すぐ使いたい: [`クイックスタート（Engine）`](#クイックスタートengine) と [`最小サンプル`](#最小サンプル)
+- すぐ使いたい: [`クイックスタート（最小サンプル）`](#クイックスタート最小サンプル)
 - 何ができるか俯瞰したい: [`提供機能一覧`](#提供機能一覧)
 - 実運用向けに深掘りしたい: [`実践ガイド`](#実践ガイド) と [`オプションと拡張ポイント`](#オプションと拡張ポイント)
 
-## クイックスタート（Engine）
+## クイックスタート（最小サンプル）
 
-`SymbolCaseEngine` は、実運用で利用しやすい統合 API です。
+`SymbolCaseEngine` は、実運用で利用しやすい統合 API です。まず `engine` を生成し、以降の 1〜4 で共通利用します。
+
+### 0. Engine の準備
 
 ```csharp
 using SymbolNaming;
@@ -26,15 +26,7 @@ var engine = new SymbolCaseEngine(
     SymbolTokenizerFactory.CreateDefault(),
     new DefaultCaseClassifier(),
     new DefaultCaseConverter());
-
-var result = engine.Analyze("UserName");
-// result.Style == CaseStyle.PascalCase
-// result.Prefixed == false
 ```
-
----
-
-## 最小サンプル
 
 ### 1. スタイル判定（Analyze）
 
@@ -405,6 +397,84 @@ var tokens = tokenizer.Tokenize("UserName");
 ---
 
 ## オプションと拡張ポイント
+
+### 拡張インターフェイス一覧
+
+| インターフェイス | 主な差し込み先 | 主なカスタマイズ内容 |
+| --- | --- | --- |
+| `ISymbolTokenizer` | `SymbolCaseEngine` コンストラクタ | トークン分割戦略そのものを差し替え |
+| `ISplitRule` | `RuleBasedSymbolTokenizer.AddRule(...)` | 分割境界ルールの追加・順序制御 |
+| `ICaseClassifier` | `SymbolCaseEngine` コンストラクタ | `Unknown` 扱いを含むスタイル判定方針の差し替え |
+| `ICaseConverter` | `SymbolCaseEngine` コンストラクタ | 変換結果文字列・警告付与ポリシーの差し替え |
+| `IPrefixProvider` | `CaseAnalysisOptions.PrefixProvider` | 接頭辞辞書の差し替え |
+| `IProtectedWordProvider` | `CaseAnalysisOptions.ProtectedWordProvider` | 保護語辞書の差し替え |
+| `IInspectionRule` | `SymbolCaseEngine` コンストラクタ（`inspectionRules`） | `Inspect` の警告ルール追加 |
+| `ICompositeSuffixPatternRule` | `CompositeSuffixPatternMatcher` | 可変サフィックス判定ルール追加 |
+
+`DefaultCaseClassifier` / `DefaultCaseConverter` をそのまま使うだけでなく、
+これらのインターフェイスを実装したカスタムクラスに差し替えることで、要件に合わせた挙動を組み込めます。
+
+### カスタム Classifier / Converter を差し替える例
+
+既存実装をラップし、差分だけを上書きする形が扱いやすいです。
+
+```csharp
+using SymbolNaming.Analysis;
+using SymbolNaming.Conversion;
+using SymbolNaming.Engine;
+using SymbolNaming.Tokenization;
+using SymbolNaming.Tokens;
+
+sealed class PreferPascalForSingleTokenClassifier : ICaseClassifier
+{
+    private readonly DefaultCaseClassifier _inner = new();
+
+    public CaseClassificationResult Classify(TokenList tokens, CaseAnalysisOptions? options = null)
+    {
+        var result = _inner.Classify(tokens, options);
+
+        if (result.Style == CaseStyle.Unknown && tokens.Count == 1)
+        {
+            return new CaseClassificationResult(CaseStyle.PascalCase, result.Prefixed, result.Decoration);
+        }
+
+        return result;
+    }
+
+    public bool TryClassify(TokenList tokens, out CaseClassificationResult result, CaseAnalysisOptions? options = null)
+    {
+        result = Classify(tokens, options);
+        return result.Style != CaseStyle.Unknown;
+    }
+}
+
+sealed class DomainAliasConverter : ICaseConverter
+{
+    private readonly DefaultCaseConverter _inner = new();
+
+    public CaseConversionResult Convert(TokenList tokens, CaseStyle targetStyle, CaseConversionOptions? options = null)
+    {
+        var baseResult = _inner.Convert(tokens, targetStyle, options);
+
+        if (targetStyle == CaseStyle.ScreamingSnakeCase)
+        {
+            var output = baseResult.Output.Replace("_ID", "_IDENTIFIER");
+            return new CaseConversionResult(
+                output,
+                baseResult.AppliedPrefixPolicy,
+                baseResult.AppliedAcronymPolicy,
+                baseResult.Warnings);
+        }
+
+        return baseResult;
+    }
+}
+
+var engine = new SymbolCaseEngine(
+    SymbolTokenizerFactory.CreateDefault(),
+    new PreferPascalForSingleTokenClassifier(),
+    new DomainAliasConverter());
+```
 
 ### Prefix / ProtectedWord 判定
 
