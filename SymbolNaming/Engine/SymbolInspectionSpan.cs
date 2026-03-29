@@ -11,12 +11,13 @@ public readonly ref struct SymbolInspectionSpan
     private readonly ReadOnlySpan<char> _source;
     private readonly SymbolInspectionSliceInfo _sliceInfo;
 
-    internal SymbolInspectionSpan(ReadOnlySpan<char> source, TokenList tokens, CaseClassificationResult classification, IReadOnlyList<SymbolInspectionWarning> warnings)
+    internal SymbolInspectionSpan(ReadOnlySpan<char> source, TokenList tokens, CaseClassificationResult classification, IReadOnlyList<SymbolInspectionWarning> warnings, CompositeSymbolPatternMatch? compositePattern)
     {
         _source = source;
         Tokens = tokens ?? throw new ArgumentNullException(nameof(tokens));
         Classification = classification;
         Warnings = warnings ?? throw new ArgumentNullException(nameof(warnings));
+        CompositePattern = compositePattern;
         _sliceInfo = SymbolInspectionSliceInfoFactory.Create(source, tokens, classification);
     }
 
@@ -72,4 +73,30 @@ public readonly ref struct SymbolInspectionSpan
     /// 注意事項が 1 件以上存在するかを示します。
     /// </summary>
     public bool HasWarnings => Warnings.Count > 0;
+
+    /// <summary>
+    /// 一致した複合命名パターンです。
+    /// </summary>
+    public CompositeSymbolPatternMatch? CompositePattern { get; }
+
+    /// <summary>
+    /// 複合命名パターンが一致したかを示します。
+    /// </summary>
+    public bool HasCompositePattern => CompositePattern.HasValue;
+
+    /// <summary>
+    /// 複合命名パターンのベース名 Span です。
+    /// </summary>
+    public ReadOnlySpan<char> CompositePatternBaseName =>
+        CompositePattern.HasValue
+            ? _source.Slice(CompositePattern.Value.BaseStart, CompositePattern.Value.BaseLength)
+            : ReadOnlySpan<char>.Empty;
+
+    /// <summary>
+    /// 複合命名パターンのサフィックス Span です。
+    /// </summary>
+    public ReadOnlySpan<char> CompositePatternSuffix =>
+        CompositePattern.HasValue
+            ? _source.Slice(CompositePattern.Value.SuffixStart, CompositePattern.Value.SuffixLength)
+            : ReadOnlySpan<char>.Empty;
 }

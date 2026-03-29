@@ -121,10 +121,18 @@ public sealed class SymbolCaseEngine : IFreezableComponent
             throw new ArgumentNullException(nameof(input));
         }
 
+        var effectiveOptions = options ?? new CaseAnalysisOptions();
         var tokens = _tokenizer.Tokenize(input);
-        var classification = _classifier.Classify(tokens, options);
+        var classification = _classifier.Classify(tokens, effectiveOptions);
         var warnings = SymbolInspectionWarningAnalyzer.Analyze(input.AsSpan(), tokens, classification);
-        return new SymbolInspection(input, tokens, classification, warnings);
+
+        CompositeSymbolPatternMatch? compositePattern = null;
+        if (effectiveOptions.CompositePatternMatcher.TryMatch(input.AsSpan(), tokens, classification, out var matchedPattern))
+        {
+            compositePattern = matchedPattern;
+        }
+
+        return new SymbolInspection(input, tokens, classification, warnings, compositePattern);
     }
 
     /// <summary>
@@ -133,10 +141,18 @@ public sealed class SymbolCaseEngine : IFreezableComponent
     public SymbolInspectionSpan Inspect(ReadOnlySpan<char> input, CaseAnalysisOptions? options = null)
     {
         EnsureFrozen();
+        var effectiveOptions = options ?? new CaseAnalysisOptions();
         var tokens = _tokenizer.Tokenize(input);
-        var classification = ClassifySpanInput(input, tokens, options);
+        var classification = ClassifySpanInput(input, tokens, effectiveOptions);
         var warnings = SymbolInspectionWarningAnalyzer.Analyze(input, tokens, classification);
-        return new SymbolInspectionSpan(input, tokens, classification, warnings);
+
+        CompositeSymbolPatternMatch? compositePattern = null;
+        if (effectiveOptions.CompositePatternMatcher.TryMatch(input, tokens, classification, out var matchedPattern))
+        {
+            compositePattern = matchedPattern;
+        }
+
+        return new SymbolInspectionSpan(input, tokens, classification, warnings, compositePattern);
     }
 
     /// <summary>

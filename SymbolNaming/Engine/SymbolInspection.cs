@@ -12,16 +12,17 @@ public sealed class SymbolInspection
     /// 新しい検査結果を初期化します。
     /// </summary>
     public SymbolInspection(string source, TokenList tokens, CaseClassificationResult classification)
-        : this(source, tokens, classification, Array.Empty<SymbolInspectionWarning>())
+        : this(source, tokens, classification, Array.Empty<SymbolInspectionWarning>(), null)
     {
     }
 
-    internal SymbolInspection(string source, TokenList tokens, CaseClassificationResult classification, IReadOnlyList<SymbolInspectionWarning> warnings)
+    internal SymbolInspection(string source, TokenList tokens, CaseClassificationResult classification, IReadOnlyList<SymbolInspectionWarning> warnings, CompositeSymbolPatternMatch? compositePattern)
     {
         Source = source ?? throw new ArgumentNullException(nameof(source));
         Tokens = tokens ?? throw new ArgumentNullException(nameof(tokens));
         Classification = classification;
         Warnings = warnings ?? throw new ArgumentNullException(nameof(warnings));
+        CompositePattern = compositePattern;
 
         var sliceInfo = SymbolInspectionSliceInfoFactory.Create(source.AsSpan(), tokens, classification);
         HasPrefix = sliceInfo.PrefixLength > 0;
@@ -78,4 +79,30 @@ public sealed class SymbolInspection
     /// 注意事項が 1 件以上存在するかを示します。
     /// </summary>
     public bool HasWarnings => Warnings.Count > 0;
+
+    /// <summary>
+    /// 一致した複合命名パターンです。
+    /// </summary>
+    public CompositeSymbolPatternMatch? CompositePattern { get; }
+
+    /// <summary>
+    /// 複合命名パターンが一致したかを示します。
+    /// </summary>
+    public bool HasCompositePattern => CompositePattern.HasValue;
+
+    /// <summary>
+    /// 複合命名パターンのベース名です。
+    /// </summary>
+    public string? CompositePatternBaseName =>
+        CompositePattern.HasValue
+            ? Source.Substring(CompositePattern.Value.BaseStart, CompositePattern.Value.BaseLength)
+            : null;
+
+    /// <summary>
+    /// 複合命名パターンのサフィックスです。
+    /// </summary>
+    public string? CompositePatternSuffix =>
+        CompositePattern.HasValue
+            ? Source.Substring(CompositePattern.Value.SuffixStart, CompositePattern.Value.SuffixLength)
+            : null;
 }

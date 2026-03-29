@@ -136,6 +136,83 @@ public class SymbolCaseEngineTests
         Assert.Equal("UserName", inspection.SymbolNameWithoutPrefix.ToString());
     }
 
+    [Theory]
+    [InlineData("EnemyUserData_WALK", "UpperTagOrSegments", "EnemyUserData", "WALK")]
+    [InlineData("EnemyUserData_WALK_NORMAL", "UpperTagOrSegments", "EnemyUserData", "WALK_NORMAL")]
+    [InlineData("EnemyUserData_WALK_SP", "UpperTagOrSegments", "EnemyUserData", "WALK_SP")]
+    [InlineData("EnemyUserData_Attack_R2", "PascalOrAlphaNumSegments", "EnemyUserData", "Attack_R2")]
+    [InlineData("EnemyUserData_GuardAll", "PascalOrAlphaNumSegments", "EnemyUserData", "GuardAll")]
+    public void Inspectは可変サフィックスの複合パターン一致を取得できる(string input, string expectedPatternId, string expectedBaseName, string expectedSuffix)
+    {
+        var engine = CreateEngine();
+
+        var inspection = engine.Inspect(
+            input,
+            new CaseAnalysisOptions
+            {
+                CompositePatternMatcher = CreateGameCompositeMatcher(),
+            });
+
+        Assert.True(inspection.HasCompositePattern);
+        Assert.NotNull(inspection.CompositePattern);
+        Assert.Equal(expectedPatternId, inspection.CompositePattern.Value.PatternId);
+        Assert.Equal(expectedBaseName, inspection.CompositePatternBaseName);
+        Assert.Equal(expectedSuffix, inspection.CompositePatternSuffix);
+    }
+
+    [Fact]
+    public void InspectはPrefix付きでも複合パターン一致を取得できる()
+    {
+        var engine = CreateEngine(prefixProvider: new TestPrefixProvider("s_"));
+
+        var inspection = engine.Inspect(
+            "s_EnemyUserData_WALK_NORMAL",
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider("s_"),
+                CompositePatternMatcher = CreateGameCompositeMatcher(),
+            });
+
+        Assert.True(inspection.HasCompositePattern);
+        Assert.Equal("EnemyUserData", inspection.CompositePatternBaseName);
+        Assert.Equal("WALK_NORMAL", inspection.CompositePatternSuffix);
+    }
+
+    [Fact]
+    public void InspectSpanは複合パターン一致のSpan情報を取得できる()
+    {
+        var engine = CreateEngine();
+
+        var inspection = engine.Inspect(
+            "EnemyUserData_Attack_R2".AsSpan(),
+            new CaseAnalysisOptions
+            {
+                CompositePatternMatcher = CreateGameCompositeMatcher(),
+            });
+
+        Assert.True(inspection.HasCompositePattern);
+        Assert.Equal("EnemyUserData", inspection.CompositePatternBaseName.ToString());
+        Assert.Equal("Attack_R2", inspection.CompositePatternSuffix.ToString());
+    }
+
+    [Fact]
+    public void Inspectはルール不一致なら複合パターン一致なしを返す()
+    {
+        var engine = CreateEngine();
+
+        var inspection = engine.Inspect(
+            "EnemyUserData-WALK",
+            new CaseAnalysisOptions
+            {
+                CompositePatternMatcher = CreateGameCompositeMatcher(),
+            });
+
+        Assert.False(inspection.HasCompositePattern);
+        Assert.Null(inspection.CompositePattern);
+        Assert.Null(inspection.CompositePatternBaseName);
+        Assert.Null(inspection.CompositePatternSuffix);
+    }
+
     private static SymbolCaseEngine CreateEngine(TestProtectedWordProvider? protectedWordProvider = null, TestPrefixProvider? prefixProvider = null, bool freeze = true)
     {
         var engine = new SymbolCaseEngine(
@@ -149,5 +226,18 @@ public class SymbolCaseEngineTests
         }
 
         return engine;
+    }
+
+    private static ICompositeSymbolPatternMatcher CreateGameCompositeMatcher()
+    {
+        return new CompositeSuffixPatternMatcher(
+            new RegexCompositeSuffixPatternRule(
+                "UpperTagOrSegments",
+                "^[A-Z]+(?:_[A-Z0-9]+)*$",
+                "^[A-Z][A-Za-z0-9]*$"),
+            new RegexCompositeSuffixPatternRule(
+                "PascalOrAlphaNumSegments",
+                "^[A-Z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)*$",
+                "^[A-Z][A-Za-z0-9]*$"));
     }
 }

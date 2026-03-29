@@ -18,6 +18,11 @@ public sealed class CaseAnalysisOptions
     public IProtectedWordProvider ProtectedWordProvider { get; set; } = EmptyProtectedWordProvider.Instance;
 
     /// <summary>
+    /// 複合命名パターン（ベース名 + サフィックス）判定に使用するマッチャーです。
+    /// </summary>
+    public ICompositeSymbolPatternMatcher CompositePatternMatcher { get; set; } = EmptyCompositeSymbolPatternMatcher.Instance;
+
+    /// <summary>
     /// 頭字語を 1 語として扱うかどうかを示す互換オプションです。
     /// </summary>
     public bool TreatAcronymsAsSingleWord { get; set; } = true;
