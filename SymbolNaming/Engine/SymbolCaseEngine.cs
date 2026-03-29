@@ -99,6 +99,36 @@ public sealed class SymbolCaseEngine : IFreezableComponent
     }
 
     /// <summary>
+    /// 複数の文字列をトークン化します。
+    /// </summary>
+    public IReadOnlyList<BulkItemResult<TokenList>> TokenizeMany(IReadOnlyList<string> inputs, BulkFailurePolicy failurePolicy = BulkFailurePolicy.FailFast)
+    {
+        EnsureFrozen();
+
+        if (inputs is null)
+        {
+            throw new ArgumentNullException(nameof(inputs));
+        }
+
+        return ExecuteMany(inputs.Count, failurePolicy, i => _tokenizer.Tokenize(inputs[i]));
+    }
+
+    /// <summary>
+    /// 複数の文字列 Memory をトークン化します。
+    /// </summary>
+    public IReadOnlyList<BulkItemResult<TokenList>> TokenizeMany(IReadOnlyList<ReadOnlyMemory<char>> inputs, BulkFailurePolicy failurePolicy = BulkFailurePolicy.FailFast)
+    {
+        EnsureFrozen();
+
+        if (inputs is null)
+        {
+            throw new ArgumentNullException(nameof(inputs));
+        }
+
+        return ExecuteMany(inputs.Count, failurePolicy, i => _tokenizer.Tokenize(inputs[i].Span));
+    }
+
+    /// <summary>
     /// 入力文字列の命名スタイルを解析します。
     /// </summary>
     public CaseClassificationResult Analyze(string input, CaseAnalysisOptions? options = null)
@@ -119,6 +149,36 @@ public sealed class SymbolCaseEngine : IFreezableComponent
     }
 
     /// <summary>
+    /// 複数の入力文字列を解析します。
+    /// </summary>
+    public IReadOnlyList<BulkItemResult<CaseClassificationResult>> AnalyzeMany(IReadOnlyList<string> inputs, CaseAnalysisOptions? options = null, BulkFailurePolicy failurePolicy = BulkFailurePolicy.FailFast)
+    {
+        EnsureFrozen();
+
+        if (inputs is null)
+        {
+            throw new ArgumentNullException(nameof(inputs));
+        }
+
+        return ExecuteMany(inputs.Count, failurePolicy, i => Analyze(inputs[i], options));
+    }
+
+    /// <summary>
+    /// 複数の入力 Memory を解析します。
+    /// </summary>
+    public IReadOnlyList<BulkItemResult<CaseClassificationResult>> AnalyzeMany(IReadOnlyList<ReadOnlyMemory<char>> inputs, CaseAnalysisOptions? options = null, BulkFailurePolicy failurePolicy = BulkFailurePolicy.FailFast)
+    {
+        EnsureFrozen();
+
+        if (inputs is null)
+        {
+            throw new ArgumentNullException(nameof(inputs));
+        }
+
+        return ExecuteMany(inputs.Count, failurePolicy, i => Analyze(inputs[i].Span, options));
+    }
+
+    /// <summary>
     /// 入力文字列の命名スタイル解析を試行します。
     /// </summary>
     public bool TryAnalyze(string input, out CaseClassificationResult result, CaseAnalysisOptions? options = null)
@@ -136,6 +196,44 @@ public sealed class SymbolCaseEngine : IFreezableComponent
         EnsureFrozen();
         var tokens = _tokenizer.Tokenize(input);
         return TryClassifySpanInput(input, tokens, out result, options);
+    }
+
+    /// <summary>
+    /// 複数の入力文字列について命名スタイル解析を試行します。
+    /// </summary>
+    public IReadOnlyList<BulkItemResult<BulkTryAnalyzeResult>> TryAnalyzeMany(IReadOnlyList<string> inputs, CaseAnalysisOptions? options = null, BulkFailurePolicy failurePolicy = BulkFailurePolicy.FailFast)
+    {
+        EnsureFrozen();
+
+        if (inputs is null)
+        {
+            throw new ArgumentNullException(nameof(inputs));
+        }
+
+        return ExecuteMany(inputs.Count, failurePolicy, i =>
+        {
+            var success = TryAnalyze(inputs[i], out var result, options);
+            return new BulkTryAnalyzeResult(success, result);
+        });
+    }
+
+    /// <summary>
+    /// 複数の入力 Memory について命名スタイル解析を試行します。
+    /// </summary>
+    public IReadOnlyList<BulkItemResult<BulkTryAnalyzeResult>> TryAnalyzeMany(IReadOnlyList<ReadOnlyMemory<char>> inputs, CaseAnalysisOptions? options = null, BulkFailurePolicy failurePolicy = BulkFailurePolicy.FailFast)
+    {
+        EnsureFrozen();
+
+        if (inputs is null)
+        {
+            throw new ArgumentNullException(nameof(inputs));
+        }
+
+        return ExecuteMany(inputs.Count, failurePolicy, i =>
+        {
+            var success = TryAnalyze(inputs[i].Span, out var result, options);
+            return new BulkTryAnalyzeResult(success, result);
+        });
     }
 
     /// <summary>
@@ -185,6 +283,36 @@ public sealed class SymbolCaseEngine : IFreezableComponent
     }
 
     /// <summary>
+    /// 複数の入力文字列を検査します。
+    /// </summary>
+    public IReadOnlyList<BulkItemResult<SymbolInspection>> InspectMany(IReadOnlyList<string> inputs, CaseAnalysisOptions? options = null, BulkFailurePolicy failurePolicy = BulkFailurePolicy.FailFast)
+    {
+        EnsureFrozen();
+
+        if (inputs is null)
+        {
+            throw new ArgumentNullException(nameof(inputs));
+        }
+
+        return ExecuteMany(inputs.Count, failurePolicy, i => Inspect(inputs[i], options));
+    }
+
+    /// <summary>
+    /// 複数の入力 Memory を検査します。
+    /// </summary>
+    public IReadOnlyList<BulkItemResult<SymbolInspection>> InspectMany(IReadOnlyList<ReadOnlyMemory<char>> inputs, CaseAnalysisOptions? options = null, BulkFailurePolicy failurePolicy = BulkFailurePolicy.FailFast)
+    {
+        EnsureFrozen();
+
+        if (inputs is null)
+        {
+            throw new ArgumentNullException(nameof(inputs));
+        }
+
+        return ExecuteMany(inputs.Count, failurePolicy, i => Inspect(inputs[i].ToString(), options));
+    }
+
+    /// <summary>
     /// 入力文字列を指定スタイルへ変換します。
     /// </summary>
     public CaseConversionResult Convert(string input, CaseStyle targetStyle, CaseConversionOptions? options = null)
@@ -212,6 +340,36 @@ public sealed class SymbolCaseEngine : IFreezableComponent
     {
         EnsureFrozen();
         return _converter.Convert(tokens, targetStyle, options);
+    }
+
+    /// <summary>
+    /// 複数の入力文字列を指定スタイルへ変換します。
+    /// </summary>
+    public IReadOnlyList<BulkItemResult<CaseConversionResult>> ConvertMany(IReadOnlyList<string> inputs, CaseStyle targetStyle, CaseConversionOptions? options = null, BulkFailurePolicy failurePolicy = BulkFailurePolicy.FailFast)
+    {
+        EnsureFrozen();
+
+        if (inputs is null)
+        {
+            throw new ArgumentNullException(nameof(inputs));
+        }
+
+        return ExecuteMany(inputs.Count, failurePolicy, i => Convert(inputs[i], targetStyle, options));
+    }
+
+    /// <summary>
+    /// 複数の入力 Memory を指定スタイルへ変換します。
+    /// </summary>
+    public IReadOnlyList<BulkItemResult<CaseConversionResult>> ConvertMany(IReadOnlyList<ReadOnlyMemory<char>> inputs, CaseStyle targetStyle, CaseConversionOptions? options = null, BulkFailurePolicy failurePolicy = BulkFailurePolicy.FailFast)
+    {
+        EnsureFrozen();
+
+        if (inputs is null)
+        {
+            throw new ArgumentNullException(nameof(inputs));
+        }
+
+        return ExecuteMany(inputs.Count, failurePolicy, i => Convert(inputs[i].Span, targetStyle, options));
     }
 
     private CaseClassificationResult ClassifySpanInput(ReadOnlySpan<char> input, TokenList tokens, CaseAnalysisOptions? options)
@@ -288,5 +446,29 @@ public sealed class SymbolCaseEngine : IFreezableComponent
         }
 
         return warnings ?? (IReadOnlyList<SymbolInspectionWarning>)Array.Empty<SymbolInspectionWarning>();
+    }
+
+    private static IReadOnlyList<BulkItemResult<T>> ExecuteMany<T>(int count, BulkFailurePolicy failurePolicy, Func<int, T> action)
+    {
+        var results = new BulkItemResult<T>[count];
+
+        for (var i = 0; i < count; i++)
+        {
+            try
+            {
+                results[i] = BulkItemResult<T>.Success(i, action(i));
+            }
+            catch (Exception ex)
+            {
+                if (failurePolicy == BulkFailurePolicy.FailFast)
+                {
+                    throw;
+                }
+
+                results[i] = BulkItemResult<T>.Failure(i, ex);
+            }
+        }
+
+        return results;
     }
 }

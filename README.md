@@ -214,7 +214,66 @@ var ok = engine.TryAnalyze(symbol, out var result, new CaseAnalysisOptions
 なお、本ライブラリはアナライザ専用ライブラリではありません。
 通常のアプリケーションコードやツール実装でも同じ API を利用できます。
 
-### 5. トークナイザーを直接構成する場合（拡張利用）
+### 5. バルク処理 API（AnalyzeMany / InspectMany / TryAnalyzeMany / ConvertMany）
+
+高頻度に大量シンボルを処理する場合は、`*Many` API を使うことで呼び出し側の反復オーバーヘッドを減らせます。
+
+```csharp
+var symbols = new[] { "UserName", "m_UserName", "__built_in_process__" };
+
+var analyzeMany = engine.AnalyzeMany(
+    symbols,
+    new CaseAnalysisOptions
+    {
+        PrefixProvider = new PrefixSetProvider("m"),
+    },
+    BulkFailurePolicy.CollectErrors);
+
+foreach (var item in analyzeMany)
+{
+    if (!item.IsSuccess)
+    {
+        // item.Error に例外情報を保持
+        continue;
+    }
+
+    // item.Index は入力順のインデックス
+    // item.Value は CaseClassificationResult
+}
+
+var inspectMany = engine.InspectMany(
+    symbols,
+    new CaseAnalysisOptions
+    {
+        PrefixProvider = new PrefixSetProvider("m"),
+    });
+
+var convertMany = engine.ConvertMany(symbols, CaseStyle.CamelCase);
+```
+
+`ReadOnlyMemory<char>` 系オーバーロードも提供しています。
+
+```csharp
+var memoryInputs = new[]
+{
+    "UserName".AsMemory(),
+    "HTTPServer".AsMemory(),
+};
+
+var converted = engine.ConvertMany(memoryInputs, CaseStyle.CamelCase);
+```
+
+失敗時ポリシー:
+
+- `BulkFailurePolicy.FailFast`: 最初の失敗で例外送出して中断
+- `BulkFailurePolicy.CollectErrors`: 失敗を `BulkItemResult.Error` に保持して継続
+
+契約:
+
+- 返却順序は入力順を維持
+- 各要素のインデックスは `BulkItemResult.Index` で取得
+
+### 6. トークナイザーを直接構成する場合（拡張利用）
 
 通常の利用では、`SymbolCaseEngine` だけで完結します。
 

@@ -109,22 +109,22 @@
 
 ### ToDo
 
-- [ ] `AnalyzeMany(...)` / `InspectMany(...)` / `TryAnalyzeMany(...)` / `ConvertMany(...)` を追加する
-- [ ] `TokenizeMany(...)` は M3 で必要性評価し、必要なら同マイルストーン内で追加する
-- [ ] 初版から `ReadOnlyMemory<char>` 系オーバーロードを提供する
-- [ ] 順序保証・例外契約・失敗時ポリシー（fail-fast / collect-errors）を明文化する
+- [x] `AnalyzeMany(...)` / `InspectMany(...)` / `TryAnalyzeMany(...)` / `ConvertMany(...)` を追加する
+- [x] `TokenizeMany(...)` は M3 で必要性評価し、必要なら同マイルストーン内で追加する
+- [x] 初版から `ReadOnlyMemory<char>` 系オーバーロードを提供する
+- [x] 順序保証・例外契約・失敗時ポリシー（fail-fast / collect-errors）を明文化する
 
 ### 性能要件（必須）
 
-- [ ] 単発 API 反復呼び出しよりオーバーヘッドを削減する
-- [ ] 高並列・高頻度実行を前提に設計する
-- [ ] 大量入力時の割り当て増加を抑制する
+- [x] 単発 API 反復呼び出しよりオーバーヘッドを削減する
+- [x] 高並列・高頻度実行を前提に設計する
+- [x] 大量入力時の割り当て増加を抑制する
 
 ### 受け入れ条件
 
-- [ ] ベンチでスループット/割り当て改善を確認できる
-- [ ] 並列利用時の契約が文書化されている
-- [ ] README にアナライザ想定（`AnalyzeMany` / `InspectMany`）と変換想定（`ConvertMany`）の利用例がある
+- [x] ベンチでスループット/割り当て改善を確認できる
+- [x] 並列利用時の契約が文書化されている
+- [x] README にアナライザ想定（`AnalyzeMany` / `InspectMany`）と変換想定（`ConvertMany`）の利用例がある
 
 ---
 

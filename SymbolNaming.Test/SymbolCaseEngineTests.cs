@@ -324,6 +324,124 @@ public class SymbolCaseEngineTests
         Assert.Null(inspection.CompositePatternSuffix);
     }
 
+    [Fact]
+    public void AnalyzeManyは入力順序を維持して結果を返す()
+    {
+        var engine = CreateEngine(prefixProvider: new TestPrefixProvider("s_"));
+
+        var results = engine.AnalyzeMany(
+            new[] { "UserName", "s_UserName" },
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider("s_"),
+            });
+
+        Assert.Equal(2, results.Count);
+        Assert.True(results[0].IsSuccess);
+        Assert.Equal(0, results[0].Index);
+        Assert.Equal(CaseStyle.PascalCase, results[0].Value!.Style);
+        Assert.False(results[0].Value.Prefixed);
+
+        Assert.True(results[1].IsSuccess);
+        Assert.Equal(1, results[1].Index);
+        Assert.Equal(CaseStyle.PascalCase, results[1].Value!.Style);
+        Assert.True(results[1].Value.Prefixed);
+    }
+
+    [Fact]
+    public void AnalyzeManyはCollectErrors時に失敗要素を保持して継続する()
+    {
+        var engine = CreateEngine();
+
+        var results = engine.AnalyzeMany(
+            new[] { "UserName", null!, "user_name" },
+            failurePolicy: BulkFailurePolicy.CollectErrors);
+
+        Assert.Equal(3, results.Count);
+        Assert.True(results[0].IsSuccess);
+        Assert.False(results[1].IsSuccess);
+        Assert.IsType<ArgumentNullException>(results[1].Error);
+        Assert.True(results[2].IsSuccess);
+        Assert.Equal(CaseStyle.LowerSnakeCase, results[2].Value!.Style);
+    }
+
+    [Fact]
+    public void TryAnalyzeManyは成功可否と結果を要素ごとに返す()
+    {
+        var engine = CreateEngine();
+
+        var results = engine.TryAnalyzeMany(new[] { "UserName", "m_UserName" });
+
+        Assert.Equal(2, results.Count);
+        Assert.True(results[0].IsSuccess);
+        Assert.True(results[0].Value!.Success);
+        Assert.Equal(CaseStyle.PascalCase, results[0].Value.Result.Style);
+
+        Assert.True(results[1].IsSuccess);
+        Assert.False(results[1].Value!.Success);
+        Assert.Equal(CaseStyle.Unknown, results[1].Value.Result.Style);
+    }
+
+    [Fact]
+    public void ConvertManyMemoryは複数入力を指定Caseへ変換できる()
+    {
+        var engine = CreateEngine();
+
+        var inputs = new[]
+        {
+            "UserName".AsMemory(),
+            "HTTPServer".AsMemory(),
+        };
+
+        var results = engine.ConvertMany(inputs, CaseStyle.CamelCase);
+
+        Assert.Equal(2, results.Count);
+        Assert.True(results[0].IsSuccess);
+        Assert.Equal("userName", results[0].Value!.Output);
+        Assert.True(results[1].IsSuccess);
+        Assert.Equal("httpServer", results[1].Value!.Output);
+    }
+
+    [Fact]
+    public void InspectManyはCollectErrors時に失敗要素を保持して継続する()
+    {
+        var engine = CreateEngine(prefixProvider: new TestPrefixProvider("m"));
+
+        var results = engine.InspectMany(
+            new[] { "m_UserName", null!, "__built_in_process__" },
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider("m"),
+            },
+            BulkFailurePolicy.CollectErrors);
+
+        Assert.Equal(3, results.Count);
+        Assert.True(results[0].IsSuccess);
+        Assert.Equal("UserName", results[0].Value!.SymbolNameWithoutPrefix);
+        Assert.False(results[1].IsSuccess);
+        Assert.IsType<ArgumentNullException>(results[1].Error);
+        Assert.True(results[2].IsSuccess);
+        Assert.Equal(CaseStyle.LowerSnakeCase, results[2].Value!.CaseStyle);
+    }
+
+    [Fact]
+    public void TokenizeManyMemoryは入力順序を維持してトークン化する()
+    {
+        var engine = CreateEngine(prefixProvider: new TestPrefixProvider("s_"));
+
+        var results = engine.TokenizeMany(new[]
+        {
+            "s_UserName".AsMemory(),
+            "User_Name".AsMemory(),
+        });
+
+        Assert.Equal(2, results.Count);
+        Assert.True(results[0].IsSuccess);
+        Assert.Equal(TokenCategory.Prefix, results[0].Value![0].Category);
+        Assert.True(results[1].IsSuccess);
+        Assert.Equal(TokenCategory.Word, results[1].Value![0].Category);
+    }
+
     private static SymbolCaseEngine CreateEngine(
         TestProtectedWordProvider? protectedWordProvider = null,
         TestPrefixProvider? prefixProvider = null,
