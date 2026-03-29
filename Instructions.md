@@ -9,7 +9,7 @@
 - `Dictionaries`: Prefix / Protected Word の辞書提供
 - `Engine`: 上記を統合した高水準 API
 
-本ドキュメントは、実装・テスト・過去の方針を統合した**開発仕様**です。
+本ドキュメントは、現行実装とテストに基づく **開発仕様** です。
 
 > Copilot 向けの応答・実装時ルールは `.github/copilot-instructions.md` を参照してください（本書から分離）。
 
@@ -81,12 +81,14 @@
 
 ## Conversion 方針
 - `DefaultCaseConverter` は `TokenList` を入力に変換する。
+- `ICaseConverter.Convert(...)` / `SymbolCaseEngine.Convert(...)` の戻り値は `CaseConversionResult` に一本化する。
 - Prefix 制御は `PrefixPolicy`（`Keep` / `Remove` / `Add`）で行う。
 - 略語制御は `AcronymPolicy`（`Preserve` / `Normalize`）で行う。
-- ユーザー志向として、単純 `string` 戻り値のみではなく、将来は Result 型や Token ベース戻り値へ拡張しやすい設計を優先する。
+- 旧 `string` 戻り値 API は並存させない（破壊的変更を許容する）。
 
 ## Engine 方針
-- `SymbolCaseEngine` で Tokenize / Analyze / Convert を一貫提供する。
+- `SymbolCaseEngine` で `Tokenize` / `Analyze` / `TryAnalyze` / `Inspect` / `NormalizeForAnalysis` / `Convert` を一貫提供する。
+- 大量入力向けに `TokenizeMany` / `AnalyzeMany` / `TryAnalyzeMany` / `InspectMany` / `ConvertMany` を提供する。
 - `NormalizeForAnalysis` / `NormalizeForAnalysis(ReadOnlySpan<char>)` により、解析向け正規化シンボルと装飾情報を取得可能にする。
 - `Inspect` / `Inspect(ReadOnlySpan<char>)` により、
   - 元シンボル
@@ -108,9 +110,9 @@
   - `Unknown` 判定と例外契約
   - Conversion の Prefix/Acronym ポリシー
 
-## 運用メモ
-- 会話由来の方針は、逐語転記ではなく仕様・設計意図として正規化して記述する。
+## 仕様記述ルール
 - 未確定事項は「未確定」と明示し、確定仕様と混在させない。
+- 方針は背景説明よりも、実装・検証に必要な規則を優先して記述する。
 
 ## ドキュメント更新運用ルール
 - 機能追加 PR では、実装変更と同一 PR 内で `README.md` と `Instructions.md` の両方を更新する。

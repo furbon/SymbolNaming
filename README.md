@@ -52,13 +52,6 @@
 
 利用形態は、クラスライブラリ・コンソールアプリ・Web アプリ・ツール・アナライザ実装などを想定しています。
 
-## ドキュメント更新ルール（開発向け）
-
-- 機能追加 PR では、実装変更にあわせて `README.md` と `Instructions.md` を同時更新します。
-- API 変更時は、利用者影響（移行要否）を `README.md` に明記します。
-
----
-
 ## 対応する命名スタイル
 
 `CaseStyle` では次のスタイルをサポートします。
@@ -182,7 +175,6 @@ var inspection = engine.Inspect("m_UserName", options);
 - `CompositePattern`（複合サフィックス一致時）
 
 `CompositeSuffixPatternMatcher` を利用する場合、ルール構築時に `PatternId` の重複・空値が検証されます。
-`RegexCompositeSuffixPatternRule` を組み合わせる実行経路では、判定時の文字列化を最小化して高頻度評価時の割り当てを抑制します。
 
 `Inspect` の警告判定は `IInspectionRule` で拡張できます。
 `SymbolCaseEngine` 既定構成では `SymbolInspectionWarningAnalyzer` が組み込まれており、
@@ -201,7 +193,7 @@ var engine = new SymbolCaseEngine(
     });
 ```
 
-ルールは登録順に実行されるため、並列利用時も同一入力に対して決定的な順序で `Warnings` を取得できます。
+ルールは登録順に実行されるため、同一入力に対して `Warnings` の順序は決定的です。
 
 ### 4. Span ベース API
 
@@ -241,7 +233,7 @@ var ok = engine.TryAnalyze(symbol, out var result, new CaseAnalysisOptions
 なお、本ライブラリはアナライザ専用ライブラリではありません。
 通常のアプリケーションコードやツール実装でも同じ API を利用できます。
 
-### 5. バルク処理 API（AnalyzeMany / InspectMany / TryAnalyzeMany / ConvertMany）
+### 5. バルク処理 API（TokenizeMany / AnalyzeMany / InspectMany / TryAnalyzeMany / ConvertMany）
 
 高頻度に大量シンボルを処理する場合は、`*Many` API を使うことで呼び出し側の反復オーバーヘッドを減らせます。
 
@@ -276,6 +268,9 @@ var inspectMany = engine.InspectMany(
     });
 
 var convertMany = engine.ConvertMany(symbols, CaseStyle.CamelCase);
+
+var tryAnalyzeMany = engine.TryAnalyzeMany(symbols);
+var tokenizeMany = engine.TokenizeMany(symbols);
 ```
 
 `ReadOnlyMemory<char>` 系オーバーロードも提供しています。
@@ -299,6 +294,8 @@ var converted = engine.ConvertMany(memoryInputs, CaseStyle.CamelCase);
 
 - 返却順序は入力順を維持
 - 各要素のインデックスは `BulkItemResult.Index` で取得
+- `TryAnalyzeMany` は `BulkTryAnalyzeResult.Success` で判定可否を返却
+- 共有インスタンスの並列利用時も、単一呼び出し内の結果順は入力順で決定的
 
 ### 6. トークナイザーを直接構成する場合（拡張利用）
 

@@ -422,11 +422,50 @@ public class SymbolCaseEngineTests
     }
 
     [Fact]
+    public void AnalyzeManyMemoryは入力順序を維持して結果を返す()
+    {
+        var engine = CreateEngine(prefixProvider: new TestPrefixProvider("s_"));
+
+        var results = engine.AnalyzeMany(
+            new[] { "UserName".AsMemory(), "s_UserName".AsMemory() },
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider("s_"),
+            });
+
+        Assert.Equal(2, results.Count);
+        Assert.True(results[0].IsSuccess);
+        Assert.Equal(CaseStyle.PascalCase, results[0].Value!.Style);
+        Assert.False(results[0].Value.Prefixed);
+
+        Assert.True(results[1].IsSuccess);
+        Assert.Equal(CaseStyle.PascalCase, results[1].Value!.Style);
+        Assert.True(results[1].Value.Prefixed);
+    }
+
+    [Fact]
     public void TryAnalyzeManyは成功可否と結果を要素ごとに返す()
     {
         var engine = CreateEngine();
 
         var results = engine.TryAnalyzeMany(new[] { "UserName", "m_UserName" });
+
+        Assert.Equal(2, results.Count);
+        Assert.True(results[0].IsSuccess);
+        Assert.True(results[0].Value!.Success);
+        Assert.Equal(CaseStyle.PascalCase, results[0].Value.Result.Style);
+
+        Assert.True(results[1].IsSuccess);
+        Assert.False(results[1].Value!.Success);
+        Assert.Equal(CaseStyle.Unknown, results[1].Value.Result.Style);
+    }
+
+    [Fact]
+    public void TryAnalyzeManyMemoryは成功可否と結果を要素ごとに返す()
+    {
+        var engine = CreateEngine();
+
+        var results = engine.TryAnalyzeMany(new[] { "UserName".AsMemory(), "m_UserName".AsMemory() });
 
         Assert.Equal(2, results.Count);
         Assert.True(results[0].IsSuccess);
@@ -478,6 +517,25 @@ public class SymbolCaseEngineTests
         Assert.IsType<ArgumentNullException>(results[1].Error);
         Assert.True(results[2].IsSuccess);
         Assert.Equal(CaseStyle.LowerSnakeCase, results[2].Value!.CaseStyle);
+    }
+
+    [Fact]
+    public void InspectManyMemoryは入力順序を維持して結果を返す()
+    {
+        var engine = CreateEngine(prefixProvider: new TestPrefixProvider("m"));
+
+        var results = engine.InspectMany(
+            new[] { "m_UserName".AsMemory(), "__built_in_process__".AsMemory() },
+            new CaseAnalysisOptions
+            {
+                PrefixProvider = new TestPrefixProvider("m"),
+            });
+
+        Assert.Equal(2, results.Count);
+        Assert.True(results[0].IsSuccess);
+        Assert.Equal("UserName", results[0].Value!.SymbolNameWithoutPrefix);
+        Assert.True(results[1].IsSuccess);
+        Assert.Equal(CaseStyle.LowerSnakeCase, results[1].Value!.CaseStyle);
     }
 
     [Fact]
