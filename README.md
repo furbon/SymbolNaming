@@ -142,7 +142,7 @@ var inspection = engine.Inspect(
 本ライブラリ本体は `netstandard2.0` をターゲットにしてビルドしています。
 
 - ライブラリ実装ターゲット: `.NET Standard 2.0`
-- テストプロジェクトターゲット: `.NET 10`
+- テストプロジェクトターゲット: `.NET 6`（最低バージョン保証）
 
 そのため、`netstandard2.0` を参照可能な .NET プロジェクトで利用できます。代表例:
 
@@ -151,6 +151,11 @@ var inspection = engine.Inspect(
 - `.NET 5+`（`.NET 6 / 7 / 8 / 9 / 10` を含む）
 
 利用形態は、クラスライブラリ・コンソールアプリ・Web アプリ・ツール・アナライザ実装などを想定しています。
+
+補足:
+
+- SDK は `global.json` で固定しています（ビルド再現性向上のため）
+- `BenchmarkDotNet` ベースの性能計測用に `SymbolNaming.Benchmarks` プロジェクトを同梱しています
 
 ## 対応する命名スタイル
 

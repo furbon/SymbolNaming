@@ -47,7 +47,7 @@ public sealed class RegexCompositeSuffixPatternRule : ICompositeSuffixPatternRul
             return false;
         }
 
-        return IsMatch(baseName.ToString(), suffix.ToString());
+        return ((ICompositeSuffixPatternRuleRuntime)this).IsMatch(baseName.ToString(), suffix.ToString());
     }
 
     bool ICompositeSuffixPatternRuleRuntime.IsMatch(string baseName, string suffix)

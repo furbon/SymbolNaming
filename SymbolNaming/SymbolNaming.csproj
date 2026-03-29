@@ -3,12 +3,28 @@
 		<TargetFramework>netstandard2.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<LangVersion>latest</LangVersion>
+		<LangVersion>12.0</LangVersion>
 		<AssemblyName>SymbolNaming</AssemblyName>
 		<RootNamespace>SymbolNaming</RootNamespace>
 		<PackageId>SymbolNaming</PackageId>
+		<Description>Tokenization, case-style analysis, conversion, and inspection helpers for symbol naming conventions.</Description>
+		<Authors>furbon</Authors>
+		<Company>furbon</Company>
+		<PackageProjectUrl>https://github.com/furbon/SymbolNaming</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/furbon/SymbolNaming</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageTags>naming;symbol;tokenizer;case;pascalcase;camelcase;snake_case</PackageTags>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>
 	<ItemGroup>
-	  <PackageReference Include="System.Memory" Version="4.6.3" />
+		<PackageReference Include="System.Memory" Version="4.6.3" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="..\README.md" Pack="true" PackagePath="\" Link="README.md" />
 	</ItemGroup>
 </Project>

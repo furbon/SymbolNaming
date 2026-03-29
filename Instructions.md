@@ -15,7 +15,8 @@
 
 ## 対象構成（現行）
 - ライブラリ: `SymbolNaming/SymbolNaming.csproj`（`.NET Standard 2.0` / `netstandard2.0`）
-- テスト: `SymbolNaming.Test/SymbolNaming.Test.csproj`（`.NET 10` / `net10.0` + xUnit）
+- テスト: `SymbolNaming.Test/SymbolNaming.Test.csproj`（`.NET 6` / `net6.0` + xUnit）
+- ベンチ: `SymbolNaming.Benchmarks/SymbolNaming.Benchmarks.csproj`（`.NET 6` / `net6.0` + BenchmarkDotNet）
 - 主要名前空間:
   - `SymbolNaming.Tokenization`
   - `SymbolNaming.Analysis`
