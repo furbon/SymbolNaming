@@ -145,7 +145,6 @@ public class SymbolCaseEngineTests
             });
 
         Assert.Equal(CaseStyle.PascalCase, inspection.CaseStyle);
-        Assert.True(inspection.Prefixed);
         Assert.True(inspection.HasPrefix);
         Assert.Equal("m", inspection.Prefix);
         Assert.Equal("UserName", inspection.SymbolNameWithoutPrefix);
@@ -194,7 +193,7 @@ public class SymbolCaseEngineTests
             });
 
         Assert.Equal(CaseStyle.PascalCase, inspection.CaseStyle);
-        Assert.True(inspection.Prefixed);
+        Assert.True(inspection.HasPrefix);
         Assert.True(inspection.HasWarnings);
         Assert.Contains(inspection.Warnings, w => w.Kind == SymbolInspectionWarningKind.SuspiciousLeadingSingleUpperToken);
     }
@@ -212,7 +211,7 @@ public class SymbolCaseEngineTests
             });
 
         Assert.Equal(CaseStyle.PascalCase, inspection.CaseStyle);
-        Assert.True(inspection.Prefixed);
+        Assert.True(inspection.HasPrefix);
         Assert.False(inspection.HasWarnings);
     }
 
@@ -229,7 +228,6 @@ public class SymbolCaseEngineTests
             });
 
         Assert.Equal(CaseStyle.PascalCase, inspection.CaseStyle);
-        Assert.True(inspection.Prefixed);
         Assert.True(inspection.HasPrefix);
         Assert.Equal("s_", inspection.Prefix.ToString());
         Assert.Equal("UserName", inspection.SymbolNameWithoutPrefix.ToString());
@@ -260,7 +258,7 @@ public class SymbolCaseEngineTests
             });
 
         Assert.Equal(CaseStyle.LowerSnakeCase, normalized.CaseStyle);
-        Assert.True(normalized.Prefixed);
+        Assert.True(normalized.HasPrefix);
         Assert.Equal("m", normalized.Prefix);
         Assert.Equal("user_name__", normalized.SymbolNameWithoutPrefix);
         Assert.Equal("user_name", normalized.NormalizedSymbol);
@@ -281,7 +279,7 @@ public class SymbolCaseEngineTests
             });
 
         Assert.Equal(CaseStyle.LowerSnakeCase, normalized.CaseStyle);
-        Assert.True(normalized.Prefixed);
+        Assert.True(normalized.HasPrefix);
         Assert.Equal("m", normalized.Prefix.ToString());
         Assert.Equal("user_name__", normalized.SymbolNameWithoutPrefix.ToString());
         Assert.Equal("user_name", normalized.NormalizedSymbol.ToString());
@@ -320,7 +318,7 @@ public class SymbolCaseEngineTests
                 CompositePatternMatcher = CreateGameCompositeMatcher(),
             });
 
-        Assert.True(inspection.HasCompositePattern);
+        Assert.True(inspection.CompositePattern.HasValue);
         Assert.NotNull(inspection.CompositePattern);
         Assert.Equal(expectedPatternId, inspection.CompositePattern.Value.PatternId);
         Assert.Equal(expectedBaseName, inspection.CompositePatternBaseName);
@@ -340,7 +338,7 @@ public class SymbolCaseEngineTests
                 CompositePatternMatcher = CreateGameCompositeMatcher(),
             });
 
-        Assert.True(inspection.HasCompositePattern);
+        Assert.True(inspection.CompositePattern.HasValue);
         Assert.Equal("EnemyUserData", inspection.CompositePatternBaseName);
         Assert.Equal("WALK_NORMAL", inspection.CompositePatternSuffix);
     }
@@ -357,7 +355,7 @@ public class SymbolCaseEngineTests
                 CompositePatternMatcher = CreateGameCompositeMatcher(),
             });
 
-        Assert.True(inspection.HasCompositePattern);
+        Assert.True(inspection.CompositePattern.HasValue);
         Assert.Equal("EnemyUserData", inspection.CompositePatternBaseName.ToString());
         Assert.Equal("Attack_R2", inspection.CompositePatternSuffix.ToString());
     }
@@ -374,7 +372,7 @@ public class SymbolCaseEngineTests
                 CompositePatternMatcher = CreateGameCompositeMatcher(),
             });
 
-        Assert.False(inspection.HasCompositePattern);
+        Assert.False(inspection.CompositePattern.HasValue);
         Assert.Null(inspection.CompositePattern);
         Assert.Null(inspection.CompositePatternBaseName);
         Assert.Null(inspection.CompositePatternSuffix);

@@ -67,7 +67,7 @@ var normalized = engine.NormalizeForAnalysis(
     });
 
 // normalized.NormalizedSymbol == "user_name"
-// normalized.Prefixed == true
+// normalized.HasPrefix == true
 // normalized.Prefix == "m"
 ```
 
@@ -86,7 +86,7 @@ var inspection = engine.Inspect(
     });
 
 // inspection.CaseStyle == CaseStyle.PascalCase
-// inspection.Prefixed == true
+// inspection.HasPrefix == true
 // inspection.SymbolNameWithoutPrefix == "UserName"
 ```
 
@@ -221,13 +221,13 @@ var normalized = engine.NormalizeForAnalysis(
     });
 
 // normalized.NormalizedSymbol == "user_name"
-// normalized.Prefixed == true
+// normalized.HasPrefix == true
 // normalized.Prefix == "m"
 // normalized.LeadingUnderscoreCount == 2
 // normalized.TrailingUnderscoreCount == 2
 ```
 
-`LeadingUnderscoreCount` / `TrailingUnderscoreCount` / `Prefixed` / `Prefix` を利用することで、
+`LeadingUnderscoreCount` / `TrailingUnderscoreCount` / `HasPrefix` / `Prefix` を利用することで、
 利用側は `string.StartsWith` のような生文字列判定に依存せずに分岐できます。
 
 ### 4. 詳細検査（Inspect）
@@ -245,7 +245,7 @@ var options = new CaseAnalysisOptions
 var inspection = engine.Inspect("m_UserName", options);
 
 // inspection.CaseStyle == CaseStyle.PascalCase
-// inspection.Prefixed == true
+// inspection.HasPrefix == true
 // inspection.HasPrefix == true
 // inspection.Prefix == "m"
 // inspection.SymbolNameWithoutPrefix == "UserName"
@@ -424,7 +424,7 @@ var analysisOptions = new CaseAnalysisOptions
 };
 
 var inspection = engine.Inspect("str_UserData", analysisOptions);
-// inspection.Prefixed == true
+// inspection.HasPrefix == true
 ```
 
 ### 単一トークン曖昧判定ポリシー
@@ -468,7 +468,7 @@ var inspect = engine.Inspect("EnemyUserData_WALK_NORMAL", new CaseAnalysisOption
     CompositePatternMatcher = compositeMatcher,
 });
 
-// inspect.HasCompositePattern == true
+// inspect.CompositePattern.HasValue == true
 // inspect.CompositePattern?.PatternId == "UpperTagOrSegments"
 // inspect.CompositePatternBaseName == "EnemyUserData"
 // inspect.CompositePatternSuffix == "WALK_NORMAL"

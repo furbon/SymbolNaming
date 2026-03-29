@@ -46,11 +46,6 @@ public sealed class SymbolNormalizationResult
     public CaseStyle CaseStyle => Classification.Style;
 
     /// <summary>
-    /// プレフィックス付きとして判定されたかを示します。
-    /// </summary>
-    public bool Prefixed => Classification.Prefixed;
-
-    /// <summary>
     /// 先頭/末尾の装飾情報です。
     /// </summary>
     public SymbolDecorationInfo Decoration => Classification.Decoration;
@@ -131,11 +126,6 @@ public readonly ref struct SymbolNormalizationSpan
     /// 判定された命名スタイルです。
     /// </summary>
     public CaseStyle CaseStyle => Classification.Style;
-
-    /// <summary>
-    /// プレフィックス付きとして判定されたかを示します。
-    /// </summary>
-    public bool Prefixed => Classification.Prefixed;
 
     /// <summary>
     /// 先頭/末尾の装飾情報です。

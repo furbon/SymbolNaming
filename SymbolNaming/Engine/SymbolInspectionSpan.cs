@@ -42,11 +42,6 @@ public readonly ref struct SymbolInspectionSpan
     public CaseStyle CaseStyle => Classification.Style;
 
     /// <summary>
-    /// プレフィックス付きとして判定されたかを示します。
-    /// </summary>
-    public bool Prefixed => Classification.Prefixed;
-
-    /// <summary>
     /// 先頭/末尾の装飾情報です。
     /// </summary>
     public SymbolDecorationInfo Decoration => Classification.Decoration;
@@ -93,11 +88,6 @@ public readonly ref struct SymbolInspectionSpan
     /// 一致した複合命名パターンです。
     /// </summary>
     public CompositeSymbolPatternMatch? CompositePattern { get; }
-
-    /// <summary>
-    /// 複合命名パターンが一致したかを示します。
-    /// </summary>
-    public bool HasCompositePattern => CompositePattern.HasValue;
 
     /// <summary>
     /// 複合命名パターンのベース名 Span です。

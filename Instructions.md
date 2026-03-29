@@ -78,7 +78,8 @@
   - `LowerSnakeCase`
   - `ScreamingSnakeCase`
 - 判定不能時は `CaseStyle.Unknown`。
-- Prefix 判定結果は `Prefixed` に保持する。
+- Prefix 判定結果は `CaseClassificationResult.Prefixed` に保持する。
+- Engine の検査/正規化結果モデル（`SymbolInspection*` / `SymbolNormalization*`）では `HasPrefix` を公開する。
 
 ## Conversion 方針
 - `DefaultCaseConverter` は `TokenList` を入力に変換する。
@@ -98,6 +99,7 @@
   - Prefix 情報
   - Prefix 除去後シンボル
   を取得可能にする。
+- 複合サフィックス一致の有無は `HasCompositePattern` ではなく `CompositePattern.HasValue` で判定する公開 API 方針とする。
 - `Inspect` の警告判定は `IInspectionRule` で拡張可能とし、既定ルールは `SymbolInspectionWarningAnalyzer` を利用する。
 - ルール実行は登録順のパイプラインで行い、同一入力に対する `Warnings` の順序決定性を維持する。
 - `CompositeSuffixPatternMatcher` はルール構築時に ID 重複・空値を検証し、不正設定を早期に検出する。
