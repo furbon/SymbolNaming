@@ -1,5 +1,3 @@
-using SymbolNaming.Tokens;
-
 namespace SymbolNaming.Tokenization.SplitRules;
 
 /// <summary>

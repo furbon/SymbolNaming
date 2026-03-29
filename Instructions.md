@@ -14,8 +14,8 @@
 > Copilot 向けの応答・実装時ルールは `.github/copilot-instructions.md` を参照してください（本書から分離）。
 
 ## 対象構成（現行）
-- ライブラリ: `SymbolNamingu/SymbolNaming.csproj`（`netstandard2.1`）
-- テスト: `SymbolNamingu.Test/SymbolNaming.Test.csproj`（`net10.0` + xUnit）
+- ライブラリ: `SymbolNaming/SymbolNaming.csproj`（`netstandard2.1`）
+- テスト: `SymbolNaming.Test/SymbolNaming.Test.csproj`（`net10.0` + xUnit）
 - 主要名前空間:
   - `SymbolNaming.Tokenization`
   - `SymbolNaming.Analysis`

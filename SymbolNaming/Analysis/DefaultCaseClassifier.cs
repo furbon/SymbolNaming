@@ -1,4 +1,3 @@
-using SymbolNaming.Dictionaries;
 using SymbolNaming.Tokens;
 
 namespace SymbolNaming.Analysis;
