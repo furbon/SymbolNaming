@@ -46,17 +46,25 @@ public sealed class TokenList : IReadOnlyList<Token>
     /// </summary>
     public bool HasSource => _source is not null;
 
+    internal ReadOnlySpan<char> SourceSpan
+    {
+        get
+        {
+            if (_source is null)
+            {
+                throw new InvalidOperationException("Source text is not available for this token list.");
+            }
+
+            return _source.AsSpan();
+        }
+    }
+
     /// <summary>
     /// 指定トークンに対応する文字列 Span を取得します。
     /// </summary>
     public ReadOnlySpan<char> GetSpan(Token token)
     {
-        if (_source is null)
-        {
-            throw new InvalidOperationException("Source text is not available for this token list.");
-        }
-
-        return token.AsSpan(_source.AsSpan());
+        return token.AsSpan(SourceSpan);
     }
 
     /// <summary>

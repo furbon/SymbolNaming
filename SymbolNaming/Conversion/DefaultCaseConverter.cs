@@ -34,8 +34,13 @@ public sealed class DefaultCaseConverter : ICaseConverter
         options ??= new CaseConversionOptions();
         List<CaseConversionWarning>? warnings = null;
 
-        var sourceWords = new List<string>(tokens.Count);
-        string? existingPrefix = null;
+        var source = tokens.SourceSpan;
+        Span<Token> wordTokens = stackalloc Token[16];
+        Token[]? rentedWordTokens = null;
+        var wordCount = 0;
+        var hasExistingPrefix = false;
+        var existingPrefixToken = default(Token);
+        var existingPrefixHasTrailingUnderscore = false;
 
         for (var i = 0; i < tokens.Count; i++)
         {
@@ -45,47 +50,103 @@ public sealed class DefaultCaseConverter : ICaseConverter
                 continue;
             }
 
-            if (existingPrefix is null && token.Category == TokenCategory.Prefix)
+            if (!hasExistingPrefix && token.Category == TokenCategory.Prefix)
             {
-                existingPrefix = tokens.GetSpan(token).ToString();
+                hasExistingPrefix = true;
+                existingPrefixToken = token;
 
                 var nextIndex = i + 1;
-                if (nextIndex < tokens.Count && IsUnderscoreSeparator(tokens[nextIndex], tokens))
+                if (nextIndex < tokens.Count && IsUnderscoreSeparator(tokens[nextIndex], source))
                 {
-                    existingPrefix += "_";
+                    existingPrefixHasTrailingUnderscore = true;
                 }
 
                 continue;
             }
 
-            sourceWords.Add(tokens.GetSpan(token).ToString());
-        }
-
-        if (sourceWords.Count == 0)
-        {
-            warnings = AddWarning(warnings, CaseConversionWarning.NoWordToken);
-
-            if (options.PrefixPolicy == PrefixPolicy.Add && string.IsNullOrEmpty(options.PrefixToAdd))
+            if (wordCount == wordTokens.Length)
             {
-                warnings = AddWarning(warnings, CaseConversionWarning.EmptyPrefixToAdd);
+                GrowWordTokenBuffer(ref wordTokens, ref rentedWordTokens, wordCount);
             }
 
-            var output = options.PrefixPolicy == PrefixPolicy.Add
-                ? options.PrefixToAdd ?? string.Empty
-                : string.Empty;
-
-            return new CaseConversionResult(output, options.PrefixPolicy, options.AcronymPolicy, warnings);
+            wordTokens[wordCount++] = token;
         }
 
-        var convertedBody = ConvertWords(sourceWords, targetStyle, options.AcronymPolicy);
-        var prefix = ResolvePrefix(options, existingPrefix);
-
-        if (options.PrefixPolicy == PrefixPolicy.Add && string.IsNullOrEmpty(options.PrefixToAdd))
+        try
         {
-            warnings = AddWarning(warnings, CaseConversionWarning.EmptyPrefixToAdd);
+            if (wordCount == 0)
+            {
+                warnings = AddWarning(warnings, CaseConversionWarning.NoWordToken);
+
+                if (options.PrefixPolicy == PrefixPolicy.Add && string.IsNullOrEmpty(options.PrefixToAdd))
+                {
+                    warnings = AddWarning(warnings, CaseConversionWarning.EmptyPrefixToAdd);
+                }
+
+                var output = options.PrefixPolicy == PrefixPolicy.Add
+                    ? options.PrefixToAdd ?? string.Empty
+                    : string.Empty;
+
+                return new CaseConversionResult(output, options.PrefixPolicy, options.AcronymPolicy, warnings);
+            }
+
+            var prefixLength = GetPrefixLength(options, hasExistingPrefix, existingPrefixToken, existingPrefixHasTrailingUnderscore);
+            var bodyLength = GetBodyLength(wordTokens.Slice(0, wordCount), targetStyle);
+            var outputLength = prefixLength + bodyLength;
+
+            var outputBuffer = ArrayPool<char>.Shared.Rent(outputLength);
+
+            try
+            {
+                var output = outputBuffer.AsSpan(0, outputLength);
+                var written = WritePrefix(
+                    output,
+                    source,
+                    options,
+                    hasExistingPrefix,
+                    existingPrefixToken,
+                    existingPrefixHasTrailingUnderscore);
+
+                written += WriteConvertedBody(
+                    output.Slice(written),
+                    source,
+                    wordTokens.Slice(0, wordCount),
+                    targetStyle,
+                    options.AcronymPolicy);
+
+                if (options.PrefixPolicy == PrefixPolicy.Add && string.IsNullOrEmpty(options.PrefixToAdd))
+                {
+                    warnings = AddWarning(warnings, CaseConversionWarning.EmptyPrefixToAdd);
+                }
+
+                return new CaseConversionResult(new string(outputBuffer, 0, written), options.PrefixPolicy, options.AcronymPolicy, warnings);
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(outputBuffer);
+            }
+        }
+        finally
+        {
+            if (rentedWordTokens is not null)
+            {
+                ArrayPool<Token>.Shared.Return(rentedWordTokens);
+            }
+        }
+    }
+
+    private static void GrowWordTokenBuffer(ref Span<Token> wordTokens, ref Token[]? rentedWordTokens, int count)
+    {
+        var newBuffer = ArrayPool<Token>.Shared.Rent(wordTokens.Length * 2);
+        wordTokens.Slice(0, count).CopyTo(newBuffer);
+
+        if (rentedWordTokens is not null)
+        {
+            ArrayPool<Token>.Shared.Return(rentedWordTokens);
         }
 
-        return new CaseConversionResult(prefix + convertedBody, options.PrefixPolicy, options.AcronymPolicy, warnings);
+        rentedWordTokens = newBuffer;
+        wordTokens = newBuffer;
     }
 
     private static List<CaseConversionWarning> AddWarning(List<CaseConversionWarning>? warnings, CaseConversionWarning warning)
@@ -95,91 +156,199 @@ public sealed class DefaultCaseConverter : ICaseConverter
         return warnings;
     }
 
-    private static string ResolvePrefix(CaseConversionOptions options, string? existingPrefix)
+    private static int GetPrefixLength(CaseConversionOptions options, bool hasExistingPrefix, Token existingPrefixToken, bool existingPrefixHasTrailingUnderscore)
     {
         return options.PrefixPolicy switch
         {
-            PrefixPolicy.Keep => existingPrefix ?? string.Empty,
-            PrefixPolicy.Remove => string.Empty,
-            PrefixPolicy.Add => options.PrefixToAdd ?? string.Empty,
+            PrefixPolicy.Keep when hasExistingPrefix => existingPrefixToken.Length + (existingPrefixHasTrailingUnderscore ? 1 : 0),
+            PrefixPolicy.Keep => 0,
+            PrefixPolicy.Remove => 0,
+            PrefixPolicy.Add => options.PrefixToAdd?.Length ?? 0,
             _ => throw new ArgumentOutOfRangeException(nameof(options.PrefixPolicy), options.PrefixPolicy, "Unsupported prefix policy."),
         };
     }
 
-    private static string ConvertWords(IReadOnlyList<string> words, CaseStyle targetStyle, AcronymPolicy acronymPolicy)
+    private static int GetBodyLength(ReadOnlySpan<Token> words, CaseStyle targetStyle)
     {
+        var length = 0;
+        for (var i = 0; i < words.Length; i++)
+        {
+            length += words[i].Length;
+        }
+
+        if (IsSnakeStyle(targetStyle) && words.Length > 1)
+        {
+            length += words.Length - 1;
+        }
+
+        return length;
+    }
+
+    private static int WritePrefix(
+        Span<char> destination,
+        ReadOnlySpan<char> source,
+        CaseConversionOptions options,
+        bool hasExistingPrefix,
+        Token existingPrefixToken,
+        bool existingPrefixHasTrailingUnderscore)
+    {
+        switch (options.PrefixPolicy)
+        {
+            case PrefixPolicy.Keep:
+                if (!hasExistingPrefix)
+                {
+                    return 0;
+                }
+
+                var prefixSpan = existingPrefixToken.AsSpan(source);
+                prefixSpan.CopyTo(destination);
+                var written = prefixSpan.Length;
+
+                if (existingPrefixHasTrailingUnderscore)
+                {
+                    destination[written++] = '_';
+                }
+
+                return written;
+
+            case PrefixPolicy.Remove:
+                return 0;
+
+            case PrefixPolicy.Add:
+                var customPrefix = options.PrefixToAdd;
+                if (string.IsNullOrEmpty(customPrefix))
+                {
+                    return 0;
+                }
+
+                customPrefix.AsSpan().CopyTo(destination);
+                return customPrefix!.Length;
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(options.PrefixPolicy), options.PrefixPolicy, "Unsupported prefix policy.");
+        }
+    }
+
+    private static int WriteConvertedBody(
+        Span<char> destination,
+        ReadOnlySpan<char> source,
+        ReadOnlySpan<Token> words,
+        CaseStyle targetStyle,
+        AcronymPolicy acronymPolicy)
+    {
+        var written = 0;
+
         switch (targetStyle)
         {
             case CaseStyle.PascalCase:
-                return BuildPascalCase(words, acronymPolicy);
+                for (var i = 0; i < words.Length; i++)
+                {
+                    written += WritePascalWord(words[i].AsSpan(source), destination.Slice(written), acronymPolicy);
+                }
+
+                return written;
 
             case CaseStyle.CamelCase:
-                return BuildCamelCase(words, acronymPolicy);
+                written += WriteLowerWord(words[0].AsSpan(source), destination.Slice(written));
+                for (var i = 1; i < words.Length; i++)
+                {
+                    written += WritePascalWord(words[i].AsSpan(source), destination.Slice(written), acronymPolicy);
+                }
+
+                return written;
 
             case CaseStyle.UpperSnakeCase:
-                return BuildSnakeCase(words, static (word, policy) => ToPascalWord(word, policy), acronymPolicy);
+                return WriteSnakeCase(destination, source, words, targetStyle, acronymPolicy);
 
             case CaseStyle.LowerSnakeCase:
-                return BuildSnakeCase(words, static (word, _) => ToLowerWord(word), acronymPolicy);
+                return WriteSnakeCase(destination, source, words, targetStyle, acronymPolicy);
 
             case CaseStyle.ScreamingSnakeCase:
-                return BuildSnakeCase(words, static (word, _) => ToUpperWord(word), acronymPolicy);
+                return WriteSnakeCase(destination, source, words, targetStyle, acronymPolicy);
 
             default:
                 throw new ArgumentOutOfRangeException(nameof(targetStyle), targetStyle, "Unsupported target style.");
         }
     }
 
-    private static string BuildPascalCase(IReadOnlyList<string> words, AcronymPolicy acronymPolicy)
-    {
-        if (words.Count == 0)
-        {
-            return string.Empty;
-        }
-
-        var converted = new string[words.Count];
-        for (var i = 0; i < words.Count; i++)
-        {
-            converted[i] = ToPascalWord(words[i], acronymPolicy);
-        }
-
-        return string.Concat(converted);
-    }
-
-    private static string BuildCamelCase(IReadOnlyList<string> words, AcronymPolicy acronymPolicy)
-    {
-        if (words.Count == 0)
-        {
-            return string.Empty;
-        }
-
-        var converted = new string[words.Count];
-        converted[0] = ToCamelFirstWord(words[0], acronymPolicy);
-        for (var i = 1; i < words.Count; i++)
-        {
-            converted[i] = ToPascalWord(words[i], acronymPolicy);
-        }
-
-        return string.Concat(converted);
-    }
-
-    private static string BuildSnakeCase(
-        IReadOnlyList<string> words,
-        Func<string, AcronymPolicy, string> wordConverter,
+    private static int WriteSnakeCase(
+        Span<char> destination,
+        ReadOnlySpan<char> source,
+        ReadOnlySpan<Token> words,
+        CaseStyle targetStyle,
         AcronymPolicy acronymPolicy)
     {
-        if (words.Count == 0)
+        var written = 0;
+        for (var i = 0; i < words.Length; i++)
         {
-            return string.Empty;
+            if (i > 0)
+            {
+                destination[written++] = '_';
+            }
+
+            var word = words[i].AsSpan(source);
+            var output = destination.Slice(written);
+            switch (targetStyle)
+            {
+                case CaseStyle.UpperSnakeCase:
+                    written += WritePascalWord(word, output, acronymPolicy);
+                    break;
+
+                case CaseStyle.LowerSnakeCase:
+                    written += WriteLowerWord(word, output);
+                    break;
+
+                case CaseStyle.ScreamingSnakeCase:
+                    written += WriteUpperWord(word, output);
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(targetStyle), targetStyle, "Unsupported target style.");
+            }
         }
 
-        var converted = new string[words.Count];
-        for (var i = 0; i < words.Count; i++)
+        return written;
+    }
+
+    private static int WritePascalWord(ReadOnlySpan<char> word, Span<char> destination, AcronymPolicy acronymPolicy)
+    {
+        if (word.IsEmpty)
         {
-            converted[i] = wordConverter(words[i], acronymPolicy);
+            return 0;
         }
 
-        return string.Join("_", converted);
+        if (acronymPolicy == AcronymPolicy.Preserve && IsAcronymWord(word))
+        {
+            return WriteUpperWord(word, destination);
+        }
+
+        destination[0] = char.ToUpperInvariant(word[0]);
+        for (var i = 1; i < word.Length; i++)
+        {
+            destination[i] = char.ToLowerInvariant(word[i]);
+        }
+
+        return word.Length;
+    }
+
+    private static int WriteLowerWord(ReadOnlySpan<char> word, Span<char> destination)
+    {
+        for (var i = 0; i < word.Length; i++)
+        {
+            destination[i] = char.ToLowerInvariant(word[i]);
+        }
+
+        return word.Length;
+    }
+
+    private static int WriteUpperWord(ReadOnlySpan<char> word, Span<char> destination)
+    {
+        for (var i = 0; i < word.Length; i++)
+        {
+            destination[i] = char.ToUpperInvariant(word[i]);
+        }
+
+        return word.Length;
     }
 
     private static bool IsWordLike(TokenCategory category)
@@ -189,48 +358,25 @@ public sealed class DefaultCaseConverter : ICaseConverter
             || category == TokenCategory.Prefix;
     }
 
-    private static bool IsUnderscoreSeparator(Token token, TokenList tokens)
+    private static bool IsUnderscoreSeparator(Token token, ReadOnlySpan<char> source)
     {
         if (token.Category != TokenCategory.Separator)
         {
             return false;
         }
 
-        var span = tokens.GetSpan(token);
+        var span = token.AsSpan(source);
         return span.Length == 1 && span[0] == '_';
     }
 
-    private static string ToPascalWord(string word, AcronymPolicy acronymPolicy)
+    private static bool IsSnakeStyle(CaseStyle style)
     {
-        if (string.IsNullOrEmpty(word))
-        {
-            return word;
-        }
-
-        if (acronymPolicy == AcronymPolicy.Preserve && IsAcronymWord(word))
-        {
-            return word.ToUpperInvariant();
-        }
-
-        return char.ToUpperInvariant(word[0]) + ToLowerWord(word.AsSpan(1));
+        return style == CaseStyle.UpperSnakeCase
+            || style == CaseStyle.LowerSnakeCase
+            || style == CaseStyle.ScreamingSnakeCase;
     }
 
-    private static string ToCamelFirstWord(string word, AcronymPolicy acronymPolicy)
-    {
-        if (string.IsNullOrEmpty(word))
-        {
-            return word;
-        }
-
-        if (acronymPolicy == AcronymPolicy.Preserve && IsAcronymWord(word))
-        {
-            return ToLowerWord(word);
-        }
-
-        return ToLowerWord(word);
-    }
-
-    private static bool IsAcronymWord(string word)
+    private static bool IsAcronymWord(ReadOnlySpan<char> word)
     {
         var hasLetter = false;
 
@@ -249,45 +395,5 @@ public sealed class DefaultCaseConverter : ICaseConverter
         }
 
         return hasLetter;
-    }
-
-    private static string ToLowerWord(string word)
-    {
-        return ToLowerWord(word.AsSpan());
-    }
-
-    private static string ToLowerWord(ReadOnlySpan<char> word)
-    {
-        return ConvertInvariant(word, toUpper: false);
-    }
-
-    private static string ToUpperWord(string word)
-    {
-        return ConvertInvariant(word.AsSpan(), toUpper: true);
-    }
-
-    private static string ConvertInvariant(ReadOnlySpan<char> value, bool toUpper)
-    {
-        if (value.IsEmpty)
-        {
-            return string.Empty;
-        }
-
-        var buffer = ArrayPool<char>.Shared.Rent(value.Length);
-
-        try
-        {
-            for (var i = 0; i < value.Length; i++)
-            {
-                var c = value[i];
-                buffer[i] = toUpper ? char.ToUpperInvariant(c) : char.ToLowerInvariant(c);
-            }
-
-            return new string(buffer, 0, value.Length);
-        }
-        finally
-        {
-            ArrayPool<char>.Shared.Return(buffer);
-        }
     }
 }

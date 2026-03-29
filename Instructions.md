@@ -87,6 +87,7 @@
 - Prefix 制御は `PrefixPolicy`（`Keep` / `Remove` / `Add`）で行う。
 - 略語制御は `AcronymPolicy`（`Preserve` / `Normalize`）で行う。
 - 旧 `string` 戻り値 API は並存させない（破壊的変更を許容する）。
+- 変換実装は高頻度実行を想定し、中間 `string` リスト/配列の多重確保を避け、`Span` と `ArrayPool<T>` を優先して GC 圧を抑える。
 
 ## Engine 方針
 - `SymbolCaseEngine` で `Tokenize` / `Analyze` / `TryAnalyze` / `Inspect` / `NormalizeForAnalysis` / `Convert` を一貫提供する。
