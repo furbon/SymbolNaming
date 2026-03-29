@@ -11,9 +11,15 @@ namespace SymbolNaming.Engine;
 /// </summary>
 public sealed class SymbolCaseEngine : IFreezableComponent
 {
+    private static readonly IInspectionRule[] DefaultInspectionRules =
+    {
+        new SymbolInspectionWarningAnalyzer(),
+    };
+
     private readonly ISymbolTokenizer _tokenizer;
     private readonly ICaseClassifier _classifier;
     private readonly ICaseConverter _converter;
+    private readonly IInspectionRule[] _inspectionRules;
     private readonly object _freezeSync = new();
 
     private DefaultCaseClassifier? _defaultClassifier;
@@ -22,11 +28,12 @@ public sealed class SymbolCaseEngine : IFreezableComponent
     /// <summary>
     /// 依存コンポーネントを指定して初期化します。
     /// </summary>
-    public SymbolCaseEngine(ISymbolTokenizer tokenizer, ICaseClassifier classifier, ICaseConverter converter)
+    public SymbolCaseEngine(ISymbolTokenizer tokenizer, ICaseClassifier classifier, ICaseConverter converter, IReadOnlyList<IInspectionRule>? inspectionRules = null)
     {
         _tokenizer = tokenizer ?? throw new ArgumentNullException(nameof(tokenizer));
         _classifier = classifier ?? throw new ArgumentNullException(nameof(classifier));
         _converter = converter ?? throw new ArgumentNullException(nameof(converter));
+        _inspectionRules = CreateInspectionRules(inspectionRules);
 
         Freeze();
     }
@@ -146,7 +153,7 @@ public sealed class SymbolCaseEngine : IFreezableComponent
         var effectiveOptions = options ?? new CaseAnalysisOptions();
         var tokens = _tokenizer.Tokenize(input);
         var classification = _classifier.Classify(tokens, effectiveOptions);
-        var warnings = SymbolInspectionWarningAnalyzer.Analyze(input.AsSpan(), tokens, classification);
+        var warnings = AnalyzeWarnings(input.AsSpan(), tokens, classification);
 
         CompositeSymbolPatternMatch? compositePattern = null;
         if (effectiveOptions.CompositePatternMatcher.TryMatch(input.AsSpan(), tokens, classification, out var matchedPattern))
@@ -166,7 +173,7 @@ public sealed class SymbolCaseEngine : IFreezableComponent
         var effectiveOptions = options ?? new CaseAnalysisOptions();
         var tokens = _tokenizer.Tokenize(input);
         var classification = ClassifySpanInput(input, tokens, effectiveOptions);
-        var warnings = SymbolInspectionWarningAnalyzer.Analyze(input, tokens, classification);
+        var warnings = AnalyzeWarnings(input, tokens, classification);
 
         CompositeSymbolPatternMatch? compositePattern = null;
         if (effectiveOptions.CompositePatternMatcher.TryMatch(input, tokens, classification, out var matchedPattern))
@@ -237,5 +244,49 @@ public sealed class SymbolCaseEngine : IFreezableComponent
         {
             throw new InvalidOperationException("Engine is not frozen. Call Freeze() before using it.");
         }
+    }
+
+    private static IInspectionRule[] CreateInspectionRules(IReadOnlyList<IInspectionRule>? inspectionRules)
+    {
+        if (inspectionRules is null)
+        {
+            return DefaultInspectionRules;
+        }
+
+        if (inspectionRules.Count == 0)
+        {
+            return Array.Empty<IInspectionRule>();
+        }
+
+        var copied = new IInspectionRule[inspectionRules.Count];
+        for (var i = 0; i < inspectionRules.Count; i++)
+        {
+            copied[i] = inspectionRules[i] ?? throw new ArgumentException("Inspection rule cannot be null.", nameof(inspectionRules));
+        }
+
+        return copied;
+    }
+
+    private IReadOnlyList<SymbolInspectionWarning> AnalyzeWarnings(ReadOnlySpan<char> source, TokenList tokens, CaseClassificationResult classification)
+    {
+        if (_inspectionRules.Length == 0)
+        {
+            return Array.Empty<SymbolInspectionWarning>();
+        }
+
+        List<SymbolInspectionWarning>? warnings = null;
+
+        for (var i = 0; i < _inspectionRules.Length; i++)
+        {
+            if (!_inspectionRules[i].TryCreateWarning(source, tokens, classification, out var warning))
+            {
+                continue;
+            }
+
+            warnings ??= new List<SymbolInspectionWarning>(_inspectionRules.Length);
+            warnings.Add(warning);
+        }
+
+        return warnings ?? (IReadOnlyList<SymbolInspectionWarning>)Array.Empty<SymbolInspectionWarning>();
     }
 }

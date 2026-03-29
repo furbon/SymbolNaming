@@ -164,6 +164,24 @@ public class SymbolCaseEngineTests
     }
 
     [Fact]
+    public void InspectはカスタムInspectionRuleをパイプライン順で実行できる()
+    {
+        var engine = CreateEngine(
+            inspectionRules: new IInspectionRule[]
+            {
+                new FixedWarningRule(1, 1),
+                new FixedWarningRule(3, 2),
+            });
+
+        var inspection = engine.Inspect("UserName");
+
+        Assert.True(inspection.HasWarnings);
+        Assert.Equal(2, inspection.Warnings.Count);
+        Assert.Equal(1, inspection.Warnings[0].Start);
+        Assert.Equal(3, inspection.Warnings[1].Start);
+    }
+
+    [Fact]
     public void InspectはPLayerパターンに警告を付与できる()
     {
         var engine = CreateEngine(prefixProvider: new TestPrefixProvider("s_"));
@@ -306,12 +324,16 @@ public class SymbolCaseEngineTests
         Assert.Null(inspection.CompositePatternSuffix);
     }
 
-    private static SymbolCaseEngine CreateEngine(TestProtectedWordProvider? protectedWordProvider = null, TestPrefixProvider? prefixProvider = null)
+    private static SymbolCaseEngine CreateEngine(
+        TestProtectedWordProvider? protectedWordProvider = null,
+        TestPrefixProvider? prefixProvider = null,
+        IReadOnlyList<IInspectionRule>? inspectionRules = null)
     {
         return new SymbolCaseEngine(
             TestTokenizerFactory.CreateDefault(protectedWordProvider, prefixProvider),
             new DefaultCaseClassifier(),
-            new DefaultCaseConverter());
+            new DefaultCaseConverter(),
+            inspectionRules);
     }
 
     private static ICompositeSymbolPatternMatcher CreateGameCompositeMatcher()
@@ -325,5 +347,21 @@ public class SymbolCaseEngineTests
                 "PascalOrAlphaNumSegments",
                 "^[A-Z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)*$",
                 "^[A-Z][A-Za-z0-9]*$"));
+    }
+
+    private sealed class FixedWarningRule : IInspectionRule
+    {
+        private readonly SymbolInspectionWarning _warning;
+
+        public FixedWarningRule(int start, int length)
+        {
+            _warning = new SymbolInspectionWarning(SymbolInspectionWarningKind.SuspiciousLeadingSingleUpperToken, start, length);
+        }
+
+        public bool TryCreateWarning(ReadOnlySpan<char> source, TokenList tokens, CaseClassificationResult classification, out SymbolInspectionWarning warning)
+        {
+            warning = _warning;
+            return true;
+        }
     }
 }

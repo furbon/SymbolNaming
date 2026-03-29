@@ -3,43 +3,46 @@ using SymbolNaming.Tokens;
 
 namespace SymbolNaming.Engine;
 
-internal static class SymbolInspectionWarningAnalyzer
+internal sealed class SymbolInspectionWarningAnalyzer : IInspectionRule
 {
-    public static SymbolInspectionWarning[] Analyze(ReadOnlySpan<char> source, TokenList tokens, CaseClassificationResult classification)
+    public bool TryCreateWarning(ReadOnlySpan<char> source, TokenList tokens, CaseClassificationResult classification, out SymbolInspectionWarning warning)
     {
         if (tokens.Count == 0)
         {
-            return Array.Empty<SymbolInspectionWarning>();
+            warning = default;
+            return false;
         }
 
         if (!TryGetFirstTwoTargetWordLikeTokenIndices(source, tokens, classification, out var firstTargetIndex, out var secondTargetIndex))
         {
-            return Array.Empty<SymbolInspectionWarning>();
+            warning = default;
+            return false;
         }
 
         var first = tokens[firstTargetIndex];
         var firstSpan = source.Slice(first.Start, first.Length);
         if (firstSpan.Length != 1 || !char.IsUpper(firstSpan[0]))
         {
-            return Array.Empty<SymbolInspectionWarning>();
+            warning = default;
+            return false;
         }
 
         if (firstSpan[0] == 'I')
         {
-            return Array.Empty<SymbolInspectionWarning>();
+            warning = default;
+            return false;
         }
 
         var second = tokens[secondTargetIndex];
         var secondSpan = source.Slice(second.Start, second.Length);
         if (!IsPascalWord(secondSpan))
         {
-            return Array.Empty<SymbolInspectionWarning>();
+            warning = default;
+            return false;
         }
 
-        return new[]
-        {
-            new SymbolInspectionWarning(SymbolInspectionWarningKind.SuspiciousLeadingSingleUpperToken, first.Start, first.Length),
-        };
+        warning = new SymbolInspectionWarning(SymbolInspectionWarningKind.SuspiciousLeadingSingleUpperToken, first.Start, first.Length);
+        return true;
     }
 
     private static bool TryGetFirstTwoTargetWordLikeTokenIndices(ReadOnlySpan<char> source, TokenList tokens, CaseClassificationResult classification, out int firstTargetIndex, out int secondTargetIndex)

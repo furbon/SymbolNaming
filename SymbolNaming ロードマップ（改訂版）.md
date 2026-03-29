@@ -87,21 +87,21 @@
 
 ### ToDo
 
-- [ ] 拡張ポイントとして `IInspectionRule` を追加する
-- [ ] 既存の `SymbolInspectionWarningAnalyzer` を既定ルールとして再構成する
-- [ ] `Engine` にルールパイプラインを追加する（責務集約はしない）
+- [x] 拡張ポイントとして `IInspectionRule` を追加する
+- [x] 既存の `SymbolInspectionWarningAnalyzer` を既定ルールとして再構成する
+- [x] `Engine` にルールパイプラインを追加する（責務集約はしない）
 
 ### 性能要件（必須）
 
-- [ ] ルール入力は `ReadOnlySpan<char>` + `TokenList` を主とする
-- [ ] ルール実行で不要割り当てを発生させない
-- [ ] 並列実行時に決定性を維持する
+- [x] ルール入力は `ReadOnlySpan<char>` + `TokenList` を主とする
+- [x] ルール実行で不要割り当てを発生させない
+- [x] 並列実行時に決定性を維持する
 
 ### 受け入れ条件
 
-- [ ] 既定警告の現行挙動が維持される
-- [ ] カスタムルール追加時も責務分離が崩れない
-- [ ] README に拡張方法と例が追記されている
+- [x] 既定警告の現行挙動が維持される
+- [x] カスタムルール追加時も責務分離が崩れない
+- [x] README に拡張方法と例が追記されている
 
 ---
 
@@ -109,9 +109,10 @@
 
 ### ToDo
 
-- [ ] `AnalyzeMany(...)` / `InspectMany(...)` を追加する
+- [ ] `AnalyzeMany(...)` / `InspectMany(...)` / `TryAnalyzeMany(...)` / `ConvertMany(...)` を追加する
+- [ ] `TokenizeMany(...)` は M3 で必要性評価し、必要なら同マイルストーン内で追加する
 - [ ] 初版から `ReadOnlyMemory<char>` 系オーバーロードを提供する
-- [ ] 順序保証・例外契約・失敗時ポリシーを明文化する
+- [ ] 順序保証・例外契約・失敗時ポリシー（fail-fast / collect-errors）を明文化する
 
 ### 性能要件（必須）
 
@@ -123,7 +124,7 @@
 
 - [ ] ベンチでスループット/割り当て改善を確認できる
 - [ ] 並列利用時の契約が文書化されている
-- [ ] README にアナライザ想定の利用例がある
+- [ ] README にアナライザ想定（`AnalyzeMany` / `InspectMany`）と変換想定（`ConvertMany`）の利用例がある
 
 ---
 

@@ -93,6 +93,8 @@
   - Prefix 情報
   - Prefix 除去後シンボル
   を取得可能にする。
+- `Inspect` の警告判定は `IInspectionRule` で拡張可能とし、既定ルールは `SymbolInspectionWarningAnalyzer` を利用する。
+- ルール実行は登録順のパイプラインで行い、同一入力に対する `Warnings` の順序決定性を維持する。
 
 ## テスト運用方針
 - xUnit テストを仕様の一次ソースとして扱う。

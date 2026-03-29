@@ -157,6 +157,25 @@ var inspection = engine.Inspect("m_UserName", options);
 - `Warnings`（注意すべき分割パターン）
 - `CompositePattern`（複合サフィックス一致時）
 
+`Inspect` の警告判定は `IInspectionRule` で拡張できます。
+`SymbolCaseEngine` 既定構成では `SymbolInspectionWarningAnalyzer` が組み込まれており、
+必要に応じてコンストラクタでカスタムルール配列を指定できます。
+
+```csharp
+using SymbolNaming.Engine;
+
+var engine = new SymbolCaseEngine(
+    SymbolTokenizerFactory.CreateDefault(),
+    new DefaultCaseClassifier(),
+    new DefaultCaseConverter(),
+    new IInspectionRule[]
+    {
+        new MyInspectionRule(),
+    });
+```
+
+ルールは登録順に実行されるため、並列利用時も同一入力に対して決定的な順序で `Warnings` を取得できます。
+
 ### 4. Span ベース API
 
 割り当てを抑えたい場面では `ReadOnlySpan<char>` ベース API を使えます。
